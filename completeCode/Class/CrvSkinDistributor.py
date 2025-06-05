@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import maya.cmds as cmds
 from collections import OrderedDict
 
+#
+
 class CrvSkinDistributor:
     def __init__(self, items ):
         '''
