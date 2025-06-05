@@ -86,3 +86,18 @@ def Create_NpocNode(Name, CrvName="", inPositionTGT="", inPositionAttrName="tran
                 )
 
     return NPOC
+
+
+def Create_Jnt(Name , CP_Target = None):
+    cmds.select(cl =1)
+    Jnt = cmds.joint(n = Name )
+    if not CP_Target is None:
+        PreGrp = cmds.createNode('transform', n=Jnt + "_PreGrp")
+        cmds.parent(Jnt, PreGrp)
+        CP = cmds.parentConstraint(CP_Target, PreGrp)
+
+        cmds.parent(Jnt, w=1)
+        cmds.delete(CP)
+        cmds.delete(PreGrp)
+
+    return Jnt
