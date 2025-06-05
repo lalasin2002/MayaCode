@@ -96,25 +96,6 @@ def Add_JntLebal(Target, Lebal, Side='M'):
     return [ReturnSide, ReTurnString]
 
 
-def Get_EnumAttrItem(Target, LongName):
-    """Enum 속성의 항목 리스트 반환."""
-    if cmds.attributeQuery(LongName, node=Target, exists=True):
-        Enum = cmds.attributeQuery(LongName, node=Target, listEnum=True)
-        return Enum[0].split(":")
-    return []
-
-
-def Get_AttrValue(Target, LongName):
-    """속성의 최소, 최대, 현재 값을 딕셔너리로 반환."""
-    if cmds.attributeQuery(LongName, node=Target, exists=True):
-        Dic = {}
-        Dic["Min"] = cmds.attributeQuery(LongName, node=Target, minimum=True)[0]
-        Dic["Max"] = cmds.attributeQuery(LongName, node=Target, maximum=True)[0]
-        Dic["Current"] = cmds.getAttr("{}.{}".format(Target, LongName))
-        return Dic
-    return {}
-
-
 def Delete_Attr(Target, LongName):
     """속성 삭제."""
     if cmds.attributeQuery(LongName, node=Target, exists=True):
