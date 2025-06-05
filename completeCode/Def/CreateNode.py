@@ -1,80 +1,88 @@
 import maya.cmds as cmds
+
+
 def Create_Node(name, nodeTyp='transform'):
     node = cmds.createNode(nodeTyp, n=name)
     return node
 
 
-def CreateBlendColor_Node(Name):
+def Create_BlendcolorNode(Name):
     node = cmds.createNode('blendColors', n=Name)
     for x in "RGB":
-        cmds.setAttr(node + ".color1{}" .format(x) ,0 )
-        cmds.setAttr(node + ".color2{}" .format(x) ,0 )
+        cmds.setAttr("{}.color1{}".format(node, x), 0)
+        cmds.setAttr("{}.color2{}".format(node, x), 0)
     return node
 
 
-def CreateSetRange_Node(Name):
+def Create_SetrangeNode(Name):
     node = cmds.createNode('setRange', n=Name)
     return node
 
 
-def CreateMD_Node(Name, operation=1):
+def Create_MdNode(Name, operation=1):
     node = cmds.createNode('multiplyDivide', n=Name)
-    cmds.setAttr(node + '.operation', operation)
+    cmds.setAttr("{}.operation".format(node), operation)
     return node
 
 
-def CreateMDL_Node(Name, Input_Value=0):
+def Create_MdlNode(Name, Input_Value=0):
     node = cmds.createNode('multDoubleLinear', n=Name)
-    cmds.setAttr(node + '.input2', Input_Value)
+    cmds.setAttr("{}.input2".format(node), Input_Value)
     return node
 
 
-def CreateADL_Node(Name, Input_Value=0):
+def Create_AdlNode(Name, Input_Value=0):
     node = cmds.createNode('addDoubleLinear', n=Name)
-    cmds.setAttr(node + '.input2', Input_Value)
+    cmds.setAttr("{}.input2".format(node), Input_Value)
     return node
 
 
-def CreateDM_Node(Name, Target, input='inputMatrix'):
+def Create_DmNode(Name, Target, input='inputMatrix'):
     node = cmds.createNode('decomposeMatrix', n=Name)
-    cmds.connectAttr(Target + '.worldMatrix', node + '.inputMatrix')
+    cmds.connectAttr("{}.worldMatrix".format(Target), "{}.{}".format(node, input))
     return node
 
 
-def CreateCondition_Node(Name, operation=0):
+def Create_ConditionNode(Name, operation=0):
     node = cmds.createNode('condition', n=Name)
-    cmds.setAttr(node + '.operation', operation)
+    cmds.setAttr("{}.operation".format(node), operation)
     return node
 
-def CreateCrvInfo_Node(Name , Crv = None):
-    node = cmds.createNode('curveInfo', n = Name)
+
+def Create_CrvinfoNode(Name, Crv=None):
+    node = cmds.createNode('curveInfo', n=Name)
     if Crv:
         Shp = Crv
         if not cmds.objectType(Crv) == "nurbsCurve":
-            Shp = cmds.listRelatives(Crv ,s =1)[0]
-        cmds.connectAttr(Shp + '.worldSpace[0]' , node + '.inputCurve' ,f=1)
+            Shp = cmds.listRelatives(Crv, s=1)[0]
+        cmds.connectAttr("{}.worldSpace[0]".format(Shp), "{}.inputCurve".format(node), f=1)
     return node
 
-def CreatePOCIF_Node(Name , CrvName = "" , Parameter = 0, TurnOnPercentage = True):
-    ReturnTgt = None
-    POCIF = cmds.createNode('pointOnCurveInfo' , n = Name)
-    
-    
-    cmds.setAttr(POCIF  + ".turnOnPercentage", TurnOnPercentage)
-    cmds.setAttr(POCIF  + '.parameter', Parameter)
-    if cmds.objExists(CrvName) == True:
-        cmds.connectAttr(CrvName + ".worldSpace[0]" , POCIF + '.inputCurve', f=1)    
-    
+
+def Create_PocifNode(Name, CrvName="", Parameter=0, TurnOnPercentage=True):
+    POCIF = cmds.createNode('pointOnCurveInfo', n=Name)
+    cmds.setAttr("{}.turnOnPercentage".format(POCIF), TurnOnPercentage)
+    cmds.setAttr("{}.parameter".format(POCIF), Parameter)
+
+    if cmds.objExists(CrvName):
+        cmds.connectAttr("{}.worldSpace[0]".format(CrvName), "{}.inputCurve".format(POCIF), f=1)
+
     return POCIF
 
-def CreateNPOC_Node(Name , CrvName = "" , inPositionTGT = "" , inPositionAttrName = "translate"):
 
-    
-    NPOC = cmds.createNode("nearestPointOnCurve" , n = Name )
-    if cmds.objExists(CrvName) == True:
-        cmds.connectAttr(CrvName + ".worldSpace[0]" , NPOC + '.inputCurve', f=1)
-    if cmds.objExists(inPositionTGT) == True:
-        if cmds.attributeQuery(inPositionAttrName , node = inPositionTGT , ex =1):
+def Create_NpocNode(Name, CrvName="", inPositionTGT="", inPositionAttrName="translate"):
+    NPOC = cmds.createNode("nearestPointOnCurve", n=Name)
+
+    if cmds.objExists(CrvName):
+        cmds.connectAttr("{}.worldSpace[0]".format(CrvName), "{}.inputCurve".format(NPOC), f=1)
+
+    if cmds.objExists(inPositionTGT):
+        if cmds.attributeQuery(inPositionAttrName, node=inPositionTGT, ex=True):
             for Axis in "XYZ":
-                cmds.connectAttr("{}.{}{}".format(inPositionTGT , inPositionAttrName , Axis) ,  "{}.inPosition{}".format(NPOC , Axis) , f=1)
+                cmds.connectAttr(
+                    "{}.{}{}".format(inPositionTGT, inPositionAttrName, Axis),
+                    "{}.inPosition{}".format(NPOC, Axis),
+                    f=True
+                )
+
     return NPOC
