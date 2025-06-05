@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 
-def d_Match_CP(Staric, Target, Bool_Point=True, Bool_Orient=True, Bool_Scale=False):
+def Match_ConstraintObject(Staric, Target, Bool_Point=True, Bool_Orient=True, Bool_Scale=False):
     ''' 
     Constraint maintainoffset = False 를 이용한 오브젝트 매치 \n
     Staric :: Constrain의 Parent 오브젝트 \n
@@ -17,3 +17,24 @@ def d_Match_CP(Staric, Target, Bool_Point=True, Bool_Orient=True, Bool_Scale=Fal
     if Bool_Scale == True:
         Scale = cmds.scaleConstraint(Staric, Target, mo=0)
         cmds.delete(Scale)
+
+def Match_PointOnCrv(Target , Crv ,Parameter , Percentage = 1 ):
+    CrvShp = None
+    if cmds.objectType(Crv) == "transform":
+        Shp = cmds.listRelatives(Crv , s =1 , type = "nurbsCurve")
+        if Shp:
+            CrvShp = Shp[0]
+        else:
+            raise ValueError("Crv is not Curve ")
+    if cmds.objectType(Crv) == "nurbsCurve":
+        CrvShp = Crv
+
+    POICF = cmds.createNode('pointOnCurveInfo', n=Target + '_POCIF')
+    
+    cmds.setAttr(POICF + '.turnOnPercentage',  Percentage )
+    cmds.setAttr(POICF + '.parameter', Parameter)
+    cmds.connectAttr(CrvShp + '.worldSpace[0]', POICF + '.inputCurve', f=1)
+    cmds.connectAttr(POICF + '.result.position ', Target + '.translate', f=1)
+    Target_Pos = cmds.xform(Target, q=1, ws =1, t =1)
+    cmds.delete(POICF)
+    cmds.xform(Target , ws= 1, t =Target_Pos)
