@@ -92,3 +92,63 @@ def Get_PoleVectorPos(Root , Middle , End , Scalar = 1):
 
     Pole_Vecotor_Pos = [Pole_Vector.x , Pole_Vector.y , Pole_Vector.z]
     return Pole_Vecotor_Pos
+
+
+#---------------------------------------------------------------------------Obj
+def Get_HierarchyObj_List(Target , Type = None):
+    cmds.select(Target, hi=1)
+    lst = cmds.ls(sl=1 )
+    if not Type == None:
+        lst = [x for x in lst if cmds.objectType(x) == Type]
+    cmds.select(cl =1)
+    return lst
+
+
+
+
+#---------------------------------------------------------------------------Render
+def Get_Shader(Obj , Type = "lambert"):
+    WorkItme = Obj
+    ShadingEngine = None
+    Shader = None
+    if cmds.objectType(WorkItme) == "transform":
+        if cmds.listRelatives(WorkItme , c =1):
+            WorkItme = cmds.listRelatives(WorkItme , c =1)[0]
+
+    if cmds.objectType(WorkItme) in ["mesh", "nurbsCurve"]:
+        ShadingEngine = cmds.listConnections(WorkItme , type="shadingEngine")
+        if ShadingEngine and len(ShadingEngine)>0:
+            ShadingEngine = ShadingEngine[0]
+
+    if ShadingEngine:
+        Shader = cmds.listConnections(ShadingEngine , s= 1 , d =0  ,  t = Type)
+    
+    return Shader
+
+def Get_RenderSet(Obj):
+    lstAttr = ['castsShadows', 'receiveShadows', 'holdOut', 'motionBlur', 'primaryVisibility', 'smoothShading',
+               'visibleInReflections', 'visibleInRefractions', 'doubleSided']
+
+    Dic = {}
+    for x in range(len(lstAttr)):
+        GetValue = cmds.getAttr('{}.{}'.format(Obj, lstAttr[x]))
+        Dic[lstAttr[x]] = GetValue
+    return Dic
+
+
+
+
+#-------------------------------------------------------------------Cal
+def Get_Distance(StartObj, EndObj ):
+    S_Pos = cmds.xform(StartObj , q =1, t =1 ,ws =1)
+    E_Pos = cmds.xform(EndObj, q=1, t=1, ws=1)
+    DT = ((S_Pos[0] - E_Pos[0])**2 + (S_Pos[1] - E_Pos[1])**2 + (S_Pos[2] - E_Pos[2])**2)**0.5
+    return DT
+
+def Get_ParameterValue(Total , Parameter):
+    Value = Total * Parameter
+    return Value
+
+def Get_Parmeter(Total, Value):
+    Parameter = Value / Total
+    return Parameter
