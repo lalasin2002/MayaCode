@@ -28,4 +28,12 @@ def Constraint_SeceneAim(Static, Target , aimV = (1,0,0) , upV = (0,1,0) , world
     Aim = cmds.aimConstraint(Static , Target  , m = MainTain , aim = aimV  , u = upV , wu = worldV , wut = worldUpType)
     return Aim[0]
 
-def Constraint_
+def Constraint_VectorAim(Static, Target , aimV = (1,0,0) , upV = (0,1,0) , worldV = (0,1,0)  , MainTain = True):
+    worldUpType = "vector"
+    Aim = cmds.aimConstraint(Static , Target  , m = MainTain , aim = aimV  , u = upV , wu = worldV , wut = worldUpType)
+    return Aim[0]
+
+def Constraint_ObjRotateAim(Static, Target, Obj , aimV = (1,0,0) , upV = (0,1,0) , worldV = (0,1,0)  , MainTain = True):
+    worldUpType = "objectrotation"
+    Aim = cmds.aimConstraint(Static , Target  , m = MainTain , aim = aimV  , u = upV , wu = worldV , wut = worldUpType , wuo = Obj )
+    return Aim[0]
