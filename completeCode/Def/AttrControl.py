@@ -70,39 +70,3 @@ def Cnt_MatchAttr(Source, Target):
                 cmds.connectAttr(source_plug, target_plug, f=1)
 
 
-
-#----------------------------------------------------------------------------------Get
-def Get_EnumAttrItem(Target, LongName):
-    """Enum 속성의 항목 리스트 반환."""
-    if cmds.attributeQuery(LongName, node=Target, exists=True):
-        Enum = cmds.attributeQuery(LongName, node=Target, listEnum=True)
-        return Enum[0].split(":")
-    return []
-
-
-def Get_AttrValue(Target, LongName):
-    """속성의 최소, 최대, 현재 값을 딕셔너리로 반환."""
-    if cmds.attributeQuery(LongName, node=Target, exists=True):
-        Dic = {}
-        Dic["Min"] = cmds.attributeQuery(LongName, node=Target, minimum=True)[0]
-        Dic["Max"] = cmds.attributeQuery(LongName, node=Target, maximum=True)[0]
-        Dic["Current"] = cmds.getAttr("{}.{}".format(Target, LongName))
-        return Dic
-    return {}
-
-
-def Get_JntRotateOrder(Jnt):
-    """
-    조인트의 'rotateOrder' 속성 값(정수)을 maya.api.OpenMaya.MEulerRotation.RotationOrder 열거형으로 변환.
-    """
-    ro_attr_val = cmds.getAttr(Jnt + ".rotateOrder")
-    # Maya 'rotateOrder' 속성 값과 MEulerRotation.RotationOrder 매핑:
-    # 0: kXYZ, 1: kYZX, 2: kZXY, 3: kXZY, 4: kYXZ, 5: kZYX
-    mapping = [
-        om.MEulerRotation.kXYZ, om.MEulerRotation.kYZX, om.MEulerRotation.kZXY,
-        om.MEulerRotation.kXZY, om.MEulerRotation.kYXZ, om.MEulerRotation.kZYX
-    ]
-    if 0 <= ro_attr_val < len(mapping):
-        return mapping[ro_attr_val]
-    
-
