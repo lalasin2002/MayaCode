@@ -23,5 +23,6 @@ def Constraint_PointAndOrient(Static , Target , MainTain = True , Scaling = Fals
 
     return [Point[0] , Orient[0]] if Scaling == False else [Point[0] , Orient[0] , Scale]
         
-
+def Constraint_Aim():
+    print ("ㄴㄴㄴㄴㄴㄴ")
 
