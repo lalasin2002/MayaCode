@@ -23,6 +23,9 @@ def Constraint_PointAndOrient(Static , Target , MainTain = True , Scaling = Fals
 
     return [Point[0] , Orient[0]] if Scaling == False else [Point[0] , Orient[0] , Scale]
         
-def Constraint_Aim():
-    print ("ㄴㄴㄴㄴㄴㄴ")
+def Constraint_SeceneAim(Static, Target , aimV = (1,0,0) , upV = (0,1,0) , worldV = (0,1,0)  , MainTain = True):
+    worldUpType = "scene"
+    Aim = cmds.aimConstraint(Static , Target  , m = MainTain , aim = aimV  , u = upV , wu = worldV , wut = worldUpType)
+    return Aim[0]
 
+def Constraint_
