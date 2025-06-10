@@ -68,6 +68,7 @@ def Add_SeparatorAttr(Target, LongName, EnumString="__"):
     return LongName
 
 def Add_JntLebal(Target, Lebal, Side='M'):
+    """조인트 라벨 붙이기용"""
     if Side == 'M':
         JntSide = 0
     elif Side == 'L':
