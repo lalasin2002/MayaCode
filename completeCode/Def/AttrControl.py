@@ -70,3 +70,7 @@ def Cnt_MatchAttr(Source, Target):
                 cmds.connectAttr(source_plug, target_plug, f=1)
 
 
+def Cnt_VectorAttr(Source, Target , Attrs = [".translate" , ".rotate" , ".scale"]):
+    for Attr in Attrs:
+        for Axis in "XYZ":
+            cmds.connectAttr("{}{}{}" .format(Source , Attr , Axis) , "{}{}{}" .format(Target , Attr , Axis) ,f =1)
