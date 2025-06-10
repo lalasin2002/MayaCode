@@ -43,7 +43,7 @@ def Set_CntParent(Object_list , Name = ["_loc" , "_locParent"] , Grplist = ["_Gr
 
 
 
-def d_Grping(Target , Count , Grp_Suffix = ["_Grp" , "_Offset" , "_Prime" , '_GrpPrime']):
+def Grping(Target , Count , Grp_Suffix = ["_Grp" , "_Offset" , "_Prime" , '_GrpPrime']):
     
     Count = int(Count)
     Groups =[]

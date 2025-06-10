@@ -4,6 +4,7 @@ import math
 
 
 def SetAttr_HideLockVectorAttr(item, lock=True, TurnOnKeyable= False):
+    """오브젝트의 translate , rotate , scale  하이드 앤 락"""
     if TurnOnKeyable :
         KeyableBool = True
     else:
@@ -21,12 +22,14 @@ def SetAttr_HideLockVectorAttr(item, lock=True, TurnOnKeyable= False):
         pass
 
 def SetAttr_ObjectsVis(Type, Turn_Bool=False):
+    """ 타입별 오브젝트 하이드"""
     All = cmds.ls(type=Type)
     for x in All:
         cmds.setAttr(x + '.visibility', Turn_Bool)
 
 
 def SetAttr_CleanJntOrient(Jnt):
+    """ 조인트 로테이션 => 조인트 오리엔트 , 식으로 초기화"""
     ParentObj = None
     IsParent = cmds.listRelatives(Jnt, p =1)
     if IsParent:
