@@ -172,3 +172,4 @@ def Create_TextCrv(Name , TextString ,CenterPivotBool = True , FontSizePt = 27.8
        cmds.move( -center[0] ,0 ,0 , r =1 , os =1 , wd =1 )
        
     return DulicateText
+

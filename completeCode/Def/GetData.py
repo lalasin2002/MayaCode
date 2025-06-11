@@ -197,6 +197,73 @@ def Get_RenderSet(Obj):
         Dic[lstAttr[x]] = GetValue
     return Dic
 
+def Get_Node_From_MeshShaderEngine(Object , Types = ["blendColors" , "RedshiftMaterialBlender"],returnToDic = True ):
+    """
+    오브젝트(transform 또는 mesh)에서 셰이딩 엔진을 찾아, 연결된 모든 상위 노드 중 
+    지정한 타입의 노드들을 반환합니다.
+
+    Args:
+        -obj (str): 오브젝트의 이름 (transform 또는 mesh)
+        -types (list, optional): 찾고 싶은 노드 타입 리스트.
+        -return_to_dic (bool, optional): 결과를 딕셔너리로 반환할지 리스트로 반환할지 결정.
+
+    Returns:
+        -dict or list: 찾은 노드들. return_to_dic 값에 따라 형식이 달라짐.
+    """
+    
+    def Find_all_CntUpstream(Start , FoundNodes = None):
+        '''재귀함수'''
+        if FoundNodes is None:
+            FoundNodes = set()
+        connects = cmds.listConnections(Start , s =1 , d =0) or []
+        for node in connects:
+            if node not in FoundNodes:
+                FoundNodes.add(node)
+                Find_all_CntUpstream(node , FoundNodes)
+        return FoundNodes
+
+
+    TransForm = None
+    MeshShp = None
+    ShadingEngine = None
+    returnDic = {}
+    returnList = []
+    ObjectType= cmds.objectType(Object)
+    if ObjectType == "transform":
+        shps = cmds.listRelatives(Object , s = 1 , type = "mesh" , fullPath=1)
+        if shps:
+            TransForm = Object
+            MeshShp = shps[0]
+    if ObjectType == "mesh":
+        parents = cmds.listRelatives(Object , p= 1 , type = "transform" , fullPath=1)
+        if parents :
+            TransForm = parents[0]
+            MeshShp = Object
+    if TransForm is None or MeshShp is None:
+        raise TypeError(">> Invalid input. Expected a transform or mesh node name (string).")
+    try:
+        ShadingEngine = cmds.listConnections(MeshShp  , type="shadingEngine")[0]
+    except (TypeError, IndexError):
+        print(">> Warning: No shadingEngine found for  '{}'." .format(MeshShp))
+        return returnDic if returnToDic else returnList
+    for type in Types:
+        returnDic[type] = []
+    
+    Conects = Find_all_CntUpstream(ShadingEngine)
+    TypesSet = set(Types)
+    for node in Conects:
+        node_type = cmds.objectType(node)
+        if node_type in TypesSet:
+            returnDic[node_type].append(node)
+
+    if returnToDic:
+        returnDic["shadingEngine"] = ShadingEngine
+        return returnDic
+    else:
+        for k , v in returnDic.items():
+            returnList += v
+        return returnList
+    
 
 
 
