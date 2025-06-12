@@ -101,6 +101,8 @@ class CreatePocifLoc:
         elif isinstance(pos_list, (list, tuple)):
             for element in pos_list:
                 if (isinstance(element, tuple) and len(element) == 3 and all(isinstance(x, (int, float)) for x in element)):
+                    if isinstance(element , list):  #2025-06-12 list이면 튜플화
+                        element = tuple(element)  # 
                     self.points_for_make_crv.append(element)
                     self.count_add_point += 1
                     self.log("> AddCount {}, Pos: {}".format(self.count_add_point, element), print_now=print_log)
