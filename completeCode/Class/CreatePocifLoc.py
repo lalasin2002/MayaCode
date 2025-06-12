@@ -42,6 +42,12 @@ class CreatePocifLoc:
         self.loc_suffix = loc_suffix
         self.pocif_dic = OrderedDict()
         self.log_messages = []
+        self.string_type = None
+        try:
+            self.string_type = basestring
+        except NameError:
+            self.string_type = str
+
 
     def log(self, msg, print_now=False):
         """
@@ -69,7 +75,7 @@ class CreatePocifLoc:
             obj (str or list/tuple): 위치를 가져올 오브젝트의 이름 또는 이름의 리스트.
             print_log (bool): 로그 메시지를 콘솔에 즉시 출력할지 여부.
         """
-        if isinstance(obj, str) and cmds.objExists(obj):
+        if isinstance(obj, self.string_type) and cmds.objExists(obj):
             pos = tuple(cmds.xform(obj, q=True, t=True, ws=True))
             self.points_for_make_crv.append(pos)
             self.count_add_point += 1
@@ -98,7 +104,7 @@ class CreatePocifLoc:
             self.points_for_make_crv.append(pos_list)
             self.count_add_point += 1
             self.log("> AddCount {}, Pos: {}".format(self.count_add_point, pos_list), print_now=print_log)
-        elif isinstance(pos_list, (list, tuple)):
+        elif isinstance(pos_list, list):
             for element in pos_list:
                 if (isinstance(element, tuple) and len(element) == 3 and all(isinstance(x, (int, float)) for x in element)):
                     if isinstance(element , list):  #2025-06-12 list이면 튜플화
@@ -121,7 +127,7 @@ class CreatePocifLoc:
         """
         crv = None
         crv_shp = None
-        if isinstance(curve, str):
+        if isinstance(curve,self.string_type):
             obj_type = cmds.objectType(curve)
             if obj_type == "transform":
                 shapes = cmds.listRelatives(curve, s=True, type="nurbsCurve")
