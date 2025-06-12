@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import maya.cmds as cmds
 import maya.api.OpenMaya as om # Maya API 2.0 사용
 import math
