@@ -387,7 +387,7 @@ def CreateOrGet_Loc(obj_or_pos , Name  = "locator" , MaxWhileCount =100): #2025-
             loc_name = temp_name
             break
     if not loc_name :
-        raise RuntimeError("Could not generate a unique locator name for: {}{}." .format(Name , count ))
+        raise RuntimeError("Could not generate a unique locator name for: {}{}." .format(Name , count )) #2025-06-13 추가
     
     
     if isinstance(obj_or_pos , (list , tuple) ) and not loc and not shape:
