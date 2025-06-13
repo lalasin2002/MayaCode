@@ -345,3 +345,61 @@ def Create_TextCrv(Name , TextString ,CenterPivotBool = True , FontSizePt = 27.8
         cmds.move( -center[0] ,0 ,0 , r =1 , os =1 , wd =1 )
 
     return DulicateText
+
+
+def CreateOrGet_Loc(obj_or_pos , Name  = "locator" , MaxWhileCount =100):
+    """
+    주어진 오브젝트나 위치값을 기반으로 로케이터를 생성하거나,
+    이미 로케이터일 경우 해당 로케이터 정보를 가져옵니다.
+
+    Args:
+        obj_or_pos (str or list or tuple): 오브젝트의 이름 또는 월드 좌표값.
+        Name (str): 생성될 로케이터의 기본 이름.
+        MaxWhileCount (int): 고유 이름을 찾기 위해 시도할 최대 횟수.
+
+    Returns:
+        list: [로케이터 트랜스폼 노드, 로케이터 쉐잎 노드]
+    """
+    string_type = None
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+    loc = None
+    shape = None
+    if isinstance(obj_or_pos , string_type) and cmds.objExists(obj_or_pos):
+        objType = cmds.objectType(obj_or_pos)
+        if objType == "locator":
+            loc = cmds.listRelatives(loc, p=1, type="transform")[0]
+            shape = obj_or_pos
+        if objType == "transform":
+            loc = obj_or_pos
+            shape = cmds.listRelatives(loc, s=1, type="locator")[0]
+
+    if Name == "" and isinstance(obj_or_pos , string_type):
+        Name = loc
+    count =0
+    loc_name = ""
+    for i in range(MaxWhileCount):
+        count = str(i) if i> 0 else ""
+        temp_name = "{}{}" .format(Name , count )
+        if not cmds.objExists(temp_name):
+            loc_name = temp_name
+            break
+    if not loc_name :
+        raise RuntimeError("Could not generate a unique locator name for: {}{}." .format(Name , count ))
+    
+    
+    if isinstance(obj_or_pos , (list , tuple) ) and not loc and not shape:
+        if isinstance(obj_or_pos , tuple):
+            obj_or_pos = list(obj_or_pos)
+
+        loc = cmds.spaceLocator(n = loc_name)[0]
+        shape = cmds.listRelatives(loc , s =1)[0]
+        cmds.xform(loc , ws =1 , t = obj_or_pos)
+    elif isinstance(obj_or_pos ,  string_type) and not loc and not shape:
+        loc = cmds.spaceLocator(n = loc_name)[0]
+        shape = cmds.listRelatives(loc , s =1)[0]
+        cmds.delete(cmds.parentConstraint(obj_or_pos , loc , mo = 0))
+
+    return [loc ,shape]
