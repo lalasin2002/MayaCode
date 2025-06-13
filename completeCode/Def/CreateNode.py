@@ -347,7 +347,7 @@ def Create_TextCrv(Name , TextString ,CenterPivotBool = True , FontSizePt = 27.8
     return DulicateText
 
 
-def CreateOrGet_Loc(obj_or_pos , Name  = "locator" , MaxWhileCount =100):
+def CreateOrGet_Loc(obj_or_pos , Name  = "locator" , MaxWhileCount =100): #2025-06-13 추가
     """
     주어진 오브젝트나 위치값을 기반으로 로케이터를 생성하거나,
     이미 로케이터일 경우 해당 로케이터 정보를 가져옵니다.
