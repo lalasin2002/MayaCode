@@ -403,3 +403,77 @@ def CreateOrGet_Loc(obj_or_pos , Name  = "locator" , MaxWhileCount =100): #2025-
         cmds.delete(cmds.parentConstraint(obj_or_pos , loc , mo = 0))
 
     return [loc ,shape]
+
+
+
+
+def Create_Distance(startObj_or_pos , endObj_or_pos , Names = ["startlocator" , "endlocator"  , "Distance"] ):
+    """
+    두 지점 사이에 동적인 거리 측정 노드를 생성합니다.
+
+    이 함수는 시작점과 끝점에 로케이터를 생성하거나 찾고,
+    이 두 로케이터 사이의 거리를 실시간으로 측정하는 `distanceDimension` 노드를
+    생성하여 연결합니다. 이 모든 과정은 이전에 정의한 `CreateOrGet_Loc` 함수를
+    활용하여 수행됩니다.
+
+    Args:
+        startObj_or_pos (str or list or tuple): 시작점으로 사용할 오브젝트의 이름 또는 월드 좌표값.
+        endObj_or_pos (str or list or tuple): 끝점으로 사용할 오브젝트의 이름 또는 월드 좌표값.
+        Names (list): 생성될 노드들의 기본 이름 리스트.
+                      [0]: 시작 로케이터, [1]: 끝 로케이터, [2]: 거리 측정 노드 순서입니다.
+
+    Returns:
+        dict or None: 
+            성공 시, 생성되거나 사용된 모든 노드(로케이터, 쉐잎, 거리 노드 등)의 
+            이름을 담은 딕셔너리를 반환합니다.
+            로케이터 생성에 실패하면 None을 반환합니다.
+    """
+    
+    string_typ = None
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+
+    startLoc = None
+    startLocShape = None
+    endLoc = None
+    endLocShape = None
+    Distance = None
+    DistanceShape = None
+    DistanceName  = None
+    DistanceShapeSuffix = "Shape"
+    DistanceCount = 0
+    returnDic = None
+
+    startLocs = CreateOrGet_Loc(startObj_or_pos , Names[0])
+    endLocs = CreateOrGet_Loc(endObj_or_pos , Names[1])
+
+    if startLocs and endLocs:
+        startLoc = startLocs[0]
+        startLocShape = startLocs[1]
+        endLoc = endLocs[0]
+        endLocShape = endLocs[1]
+
+        while True:
+            DistanceName = "{}{}{}" .format(Names[2] , DistanceShapeSuffix , "" if DistanceCount == 0 else DistanceCount)
+            if not cmds.objExists(DistanceName ):
+                break
+            DistacneCount += 1
+        DistanceShp = cmds.createNode("distanceDimShape" , n = DistanceName )
+        Distance = cmds.listRelatives(DistanceShp , p =1 , type= "transform")
+        Distance = cmds.rename(Distance[0] , '{}{}' .format(Names[2]  , "" if DistanceCount == 0 else DistanceCount))
+
+        cmds.connectAttr(startLocShape + ".worldPosition[0]" , DistanceShp + ".startPoint" ,f =1)
+        cmds.connectAttr(endLocShape + ".worldPosition[0]" , DistanceShp + ".endPoint" ,f =1)
+
+        returnDic = {
+            "startLoc" : startLoc ,
+            "endLoc" : endLoc ,
+            "startLoc_shape" : startLocShape ,
+            "endLoc_shape" : endLocShape ,
+            "distance_node" : DistanceShape ,
+            "distance_transform" : Distance
+        }
+
+    return returnDic
