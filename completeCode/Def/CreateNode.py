@@ -641,3 +641,31 @@ def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge"
     }
 
     return returnDic
+
+def Create_PointOnSurface_FromMeshEdge(startEdge , endEdge  , Names = ["start_curveFromMeshEdge" , "end_curveFromMeshEdge" , "startEnd_loft" , "startEnd_surFace"] ):
+    startCFME = Create_CurveFromMeshEdge(startEdge,  Names[0] )
+    endCFME = Create_CurveFromMeshEdge(endEdge, Names[1] )
+    LoftName = uniqueName(Names[2])
+    SurFaceName = None
+    SurFaceInfo = None
+    returnDic = {}
+
+    Loft = cmds.createNode("loft", n = LoftName)
+    cmds.connectAttr( "{}.outputCurve" .format(startCFME ) , "{}.inputCurve[0]" .format(Loft), f=1)
+    cmds.connectAttr( "{}.outputCurve" .format(endCFME ) , "{}.inputCurve[1]" .format(Loft),f=1)
+    if not Names == "":
+        SurFaceName = uniqueName(Names[3])
+        SurFaceInfo = cmds.createNode("pointOnSurfaceInfo" , n = SurFaceName)
+        cmds.setAttr("{}.turnOnPercentage" .format(SurFaceInfo), 1)
+        for x in "UV":
+            cmds.setAttr(SurFaceInfo + ".parameter{}" .format(x) , 0.5)
+        cmds.connectAttr("{}.outputSurface" .format(Loft), "{}.inputSurface" .format(SurFaceInfo) ,f =1 )
+
+
+    returnDic = {
+        "start_cfme" : startCFME,
+        "end_cfme" : endCFME,
+        "loft" : Loft,
+        "posif" : SurFaceInfo
+    }
+    return returnDic
