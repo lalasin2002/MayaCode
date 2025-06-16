@@ -4,6 +4,19 @@ import maya.mel as mel
 import maya.OpenMaya as om
 
 
+def Get_SelectFaces(list):
+    Faces = [x for x in list if ".f" in x]
+    return Faces
+
+def Get_SelectEdges(list):
+    Edges = [x for x in list if ".e" in x]
+    return Edges
+
+def Get_SelectVtxs(list):
+    Vtxs = [x for x in list if ".vtx" in x]
+    return Vtxs
+
+
 
 def GetMeshVtx_SequencePos(FirstVtxs , ConversionTuple = True):
     """메쉬 버텍스 시작점 부터 시퀀스 대로 중심점 Pos 가져오기"""
