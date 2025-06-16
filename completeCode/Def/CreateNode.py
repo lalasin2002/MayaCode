@@ -1,5 +1,49 @@
 # -*- coding: utf-8 -*-
+
 import maya.cmds as cmds
+import maya.mel as mel
+import maya.OpenMaya as om
+from collections import OrderedDict
+import re
+
+def uniqueName(Name , maxLoop = 100 ):
+    string_type = None
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+    returnName = None
+    formatName = None
+    count = 0
+    if isinstance(Name , string_type ):
+
+        hasFormatPattern = r"\{.*?\}"
+        hasFormat = re.search(hasFormatPattern , Name)
+        
+        isIntPattern = r"(.*?)([0-9]+)(.*?)"
+        isInt = re.search(isIntPattern , Name)
+        if isInt:
+            matchs = isInt.groups()
+            count = int(isInt.group(2))
+            joinName = []
+            for x in matchs:
+                if x == isInt.group(2):
+                    x = "{}"
+                    joinName.append(x)
+                    continue
+                joinName.append(x)
+            formatName = "".join(joinName)
+        else:
+            formatName = Name + "{}"
+        
+        for x in range(count , maxLoop + count):
+            count = x if x > 0 else ""
+
+            returnName = formatName.format("" if count == 0 else count )
+            if not cmds.objExists(returnName):
+                break
+
+    return returnName
 
 
 def Create_Node(name, nodeTyp='transform'):
@@ -409,6 +453,7 @@ def CreateOrGet_Loc(obj_or_pos , Name  = "locator" , MaxWhileCount =100): #2025-
 
 def Create_Distance(startObj_or_pos , endObj_or_pos , Names = ["startlocator" , "endlocator"  , "Distance"] ):
     """
+    CreateOrGet_Loc 함수 사용
     두 지점 사이에 동적인 거리 측정 노드를 생성합니다.
 
     이 함수는 시작점과 끝점에 로케이터를 생성하거나 찾고,
@@ -423,7 +468,16 @@ def Create_Distance(startObj_or_pos , endObj_or_pos , Names = ["startlocator" , 
                       [0]: 시작 로케이터, [1]: 끝 로케이터, [2]: 거리 측정 노드 순서입니다.
 
     Returns:
-        dict or None: 
+        -dict or None: 
+            딕셔너리 키
+            {
+            "startLoc" : startLoc ,
+            "endLoc" : endLoc ,
+            "startLoc_shape" : startLocShape ,
+            "endLoc_shape" : endLocShape ,
+            "distance_node" : DistanceShape ,
+            "distance_transform" : Distance
+            }
             성공 시, 생성되거나 사용된 모든 노드(로케이터, 쉐잎, 거리 노드 등)의 
             이름을 담은 딕셔너리를 반환합니다.
             로케이터 생성에 실패하면 None을 반환합니다.
@@ -475,5 +529,116 @@ def Create_Distance(startObj_or_pos , endObj_or_pos , Names = ["startlocator" , 
             "distance_node" : DistanceShape ,
             "distance_transform" : Distance
         }
+
+    return returnDic
+
+def Create_CurveFromMeshEdge(Edge , Name = "" ): #2025-06-13 추가
+    """
+    선택한 메쉬의 특정 엣지(Edge)로부터 커브를 생성하는 유틸리티 노드를 만듭니다.
+
+    Args:
+        Edge (str): 'pCube1.e[100]'과 같은 엣지 컴포넌트 이름.
+        Name (str, optional): 생성될 'curveFromMeshEdge' 노드의 이름. 지정하지 않으면
+                              오브젝트 이름을 기반으로 자동 생성됩니다.
+
+    Returns:
+        str: 성공적으로 생성된 'curveFromMeshEdge' 노드의 이름.
+    """
+
+    string_type = None
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+
+    IntPattern = r"\[([0-9])+\]"
+    Geo = None
+    EdgeIndex = None
+    NodeName = None
+    IsEdge = cmds.filterExpand(Edge , selectionMask= 32 , expand= 1) 
+    if not isinstance(Edge ,string_type) and IsEdge:
+        raise TypeError(">> Invalid input: 'Edge' must be a meshEdge.")
+    Geo = cmds.ls(Edge , objectsOnly=1)[0]
+    Search = re.search(IntPattern , IsEdge[0])
+    if Search:
+        Match = Search.group(1)
+        EdgeIndex = int(Match)
+    
+    if Name == "":
+        Name = "{}_CFME" .format(Geo)  #Geo + "_CFME"
+    Count = 0 
+    while True:
+        NodeName = "{}{}" .format(Name , "" if Count== 0 else Count)
+        if not cmds.objExists(NodeName):
+            break
+        Count += 1
+    
+    Node = cmds.createNode("curveFromMeshEdge" , n = NodeName)
+    cmds.setAttr(Node + ".edgeIndex[0]" , EdgeIndex)
+    cmds.connectAttr(Geo + ".worldMesh[0]" , Node + ".inputMesh" ,f=1)
+
+    return Node
+
+
+def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge" , "pointOnCurveInfo"], CreateLoc = "" ):
+    """
+    메쉬의 특정 엣지(Edge) 위 한 지점의 정보를 읽는 노드 네트워크를 생성합니다.
+
+    이 함수는 먼저 'Create_CurveFromMeshEdge'를 호출하여 엣지로부터 동적인 커브를
+    생성합니다. 그 다음, 'pointOnCurveInfo' 노드를 만들어 해당 커브 위의 특정 지점
+    (Parameter)에 대한 위치 정보를 실시간으로 읽어옵니다.
+    선택적으로, 이 위치에 로케이터를 생성하고 연결하여 시각적으로 표시할 수 있습니다.
+
+    Args:
+        Edge (str): 
+            정보를 읽어올 기준이 되는 엣지 컴포넌트 이름. (예: 'pCube1.e[100]')
+        
+        Parameter (float, optional): 
+            엣지 위의 위치를 나타내는 값. 0.0은 엣지의 시작점, 1.0은 끝점을 의미합니다.
+            기본값은 0.5 (중간 지점)입니다.
+            
+        Names (list, optional): 
+            생성될 유틸리티 노드들의 기본 이름 리스트.
+            [0]: 'curveFromMeshEdge' 노드 이름, [1]: 'pointOnCurveInfo' 노드 이름 순서입니다.
+            
+        CreateLoc (str, optional): 
+            로케이터를 생성하고 싶을 경우, 생성될 로케이터의 기본 이름을 지정합니다.
+            빈 문자열("")로 두면 로케이터를 생성하지 않습니다.
+
+    Returns:
+        dict: 
+            생성된 모든 주요 노드들의 이름을 담은 딕셔너리.
+            
+            {
+                "pocif": (str) 생성된 pointOnCurveInfo 노드,\n
+                "cfme": (str) 생성된 curveFromMeshEdge 노드,\n
+                "locator": (str or None) 생성된 로케이터의 트랜스폼 노드,\n
+                "locator_shape": (str or None) 생성된 로케이터의 쉐잎 노드\n
+            }
+    """
+    returnDic = {}
+    Loc = None
+    LocShape = None
+    CFME = Create_CurveFromMeshEdge(Edge , Names[0])
+    PocifName = uniqueName(Names[1])
+    Pocif = cmds.createNode("pointOnCurveInfo" , n = PocifName)
+    cmds.setAttr(Pocif + ".turnOnPercentage" ,1)
+    cmds.setAttr(Pocif + ".parameter", Parameter)
+    cmds.connectAttr(CFME + ".outputCurve" , Pocif + ".inputCurve" , f=1)
+
+    if not CreateLoc == "":
+        LocName = uniqueName(CreateLoc)
+        Loc = cmds.spaceLocator( n = LocName)[0]
+        LocShape = cmds.listRelatives(Loc , s =1)[0]
+
+        for x in "XYZ":
+            cmds.connectAttr(Pocif + ".position{}" .format(x) , Loc + ".translate{}" .format(x) , f =1)
+
+    returnDic = {
+        "pocif" : Pocif,
+        "cfme" : CFME,
+        "locator" : Loc,
+        "locator_shape" : LocShape
+    }
 
     return returnDic
