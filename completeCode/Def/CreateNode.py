@@ -551,7 +551,7 @@ def Create_CurveFromMeshEdge(Edge , Name = "" ): #2025-06-13 추가
     except NameError:
         string_type = str
 
-    IntPattern = r"\[([0-9])+\]"
+    IntPattern = r"\[(\d+)\]"
     Geo = None
     EdgeIndex = None
     NodeName = None
@@ -580,7 +580,7 @@ def Create_CurveFromMeshEdge(Edge , Name = "" ): #2025-06-13 추가
     return Node
 
 
-def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge" , "pointOnCurveInfo"], CreateLoc = "" ):
+def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge" , "pointOnCurveInfo" , ""] ):
     """
     메쉬의 특정 엣지(Edge) 위 한 지점의 정보를 읽는 노드 네트워크를 생성합니다.
 
@@ -599,11 +599,10 @@ def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge"
             
         Names (list, optional): 
             생성될 유틸리티 노드들의 기본 이름 리스트.
-            [0]: 'curveFromMeshEdge' 노드 이름, [1]: 'pointOnCurveInfo' 노드 이름 순서입니다.
+            [0]: 'curveFromMeshEdge' 노드 이름
+            [1]: 'pointOnCurveInfo' 노드 이름 순서입니다.
+            [2]: 생성될 로케이터 이름 ""경우 생성되지않음
             
-        CreateLoc (str, optional): 
-            로케이터를 생성하고 싶을 경우, 생성될 로케이터의 기본 이름을 지정합니다.
-            빈 문자열("")로 두면 로케이터를 생성하지 않습니다.
 
     Returns:
         dict: 
@@ -626,8 +625,8 @@ def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge"
     cmds.setAttr(Pocif + ".parameter", Parameter)
     cmds.connectAttr(CFME + ".outputCurve" , Pocif + ".inputCurve" , f=1)
 
-    if not CreateLoc == "":
-        LocName = uniqueName(CreateLoc)
+    if not Names[2] == "":
+        LocName = uniqueName(Names[2])
         Loc = cmds.spaceLocator( n = LocName)[0]
         LocShape = cmds.listRelatives(Loc , s =1)[0]
 
