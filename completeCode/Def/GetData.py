@@ -9,7 +9,7 @@ def Get_pararmeterCurve(obj_or_pos , Curve ):
 
     Args:
         obj_or_pos (str or list or tuple): 
-            - 파라미터를 찾을 기준 위치가 되는 오브젝트의 이름 (예: "pCube1")
+            - 파라미터를 찾을 기준 위치가 되는 오브젝트의 이름 (예: "curve1")
             - 또는 3D 월드 공간 좌표 (예: [1.0, 2.0, 3.0] 또는 (1.0, 2.0, 3.0))
         
         Curve (str): 
