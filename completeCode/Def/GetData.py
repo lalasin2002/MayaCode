@@ -3,18 +3,69 @@ import maya.cmds as cmds
 import maya.mel as mel
 import maya.OpenMaya as om
 
+def Get_pararmeterCurve(obj_or_pos , Curve ):
+    """
+    지정한 오브젝트의 위치 또는 좌표값(list, tuple)에서 가장 가까운 커브의 파라미터 값을 찾아 반환합니다.
 
-def Get_SelectFaces(list):
-    Faces = [x for x in list if ".f" in x]
-    return Faces
+    Args:
+        obj_or_pos (str or list or tuple): 
+            - 파라미터를 찾을 기준 위치가 되는 오브젝트의 이름 (예: "pCube1")
+            - 또는 3D 월드 공간 좌표 (예: [1.0, 2.0, 3.0] 또는 (1.0, 2.0, 3.0))
+        
+        Curve (str): 
+            - 대상이 되는 커브의 이름 (transform 또는 nurbsCurve shape 이름 모두 가능)
 
-def Get_SelectEdges(list):
-    Edges = [x for x in list if ".e" in x]
-    return Edges
+    Returns:
+        float: 계산된 커브 파라미터 값. 실패 시 None을 반환할 수 있습니다.
+        
+    Raises:
+        TypeError: 입력값이 유효하지 않을 경우 에러를 발생시킵니다.
+    """
+    string_type = None
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
 
-def Get_SelectVtxs(list):
-    Vtxs = [x for x in list if ".vtx" in x]
-    return Vtxs
+    Position = None
+    CrvShp = None
+    Parameter = None
+    if cmds.objExists(Curve):
+        CurveType = cmds.objectType(Curve)
+
+        if CurveType == "transform":
+            IsShp = cmds.listRelatives(Curve , s =1  ,type = "nurbsCurve")
+            if IsShp:
+                CrvShp = IsShp[0]
+        if CurveType == "nurbsCurve":
+            CrvShp = Curve
+    else:
+        raise TypeError (">> Invaild input. Expected a Curve")
+    
+
+    if isinstance(obj_or_pos , string_type) and cmds.objExists(obj_or_pos) and Curve:
+
+        PosNode = cmds.createNode("transform")
+        cmds.delete(cmds.pointConstraint(obj_or_pos , PosNode , mo = 0))
+        Position = cmds.xform(PosNode , ws =1 , t = 1 , q =1)
+
+        cmds.delete(PosNode)
+    elif isinstance(obj_or_pos , (list , tuple)) and len(obj_or_pos) == 3 and all(isinstance(x, (int, float)) for x in obj_or_pos):
+        Position = obj_or_pos
+    else:
+        raise TypeError (">> Invalid input. Expected a tuple like (0, 0, 0) or a list/tuple of such tuples.")
+
+    if Position:
+        nearestPointOnCrv = cmds.createNode("nearestPointOnCurve")
+        for i , x in enumerate("XYZ"):
+            cmds.setAttr(nearestPointOnCrv + ".inPosition{}" .format(x) , Position[i])
+
+        cmds.connectAttr(CrvShp + ".worldSpace[0]" , nearestPointOnCrv + ".inputCurve" , f=1)
+        Parameter = cmds.getAttr(nearestPointOnCrv + ".parameter")
+        if Parameter:
+            cmds.delete(nearestPointOnCrv)
+
+        return Parameter
 
 
 
@@ -148,6 +199,19 @@ def Get_HierarchyObj_List(Target , Type = None):
         lst = [x for x in lst if cmds.objectType(x) == Type]
     cmds.select(cl =1)
     return lst
+
+def Get_SelectFaces(list):
+    Faces = [x for x in list if ".f" in x]
+    return Faces
+
+def Get_SelectEdges(list):
+    Edges = [x for x in list if ".e" in x]
+    return Edges
+
+def Get_SelectVtxs(list):
+    Vtxs = [x for x in list if ".vtx" in x]
+    return Vtxs
+
 
 #---------------------------------------------------------------------------Skin
 
