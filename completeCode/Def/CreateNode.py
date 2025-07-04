@@ -669,3 +669,71 @@ def Create_PointOnSurface_FromMeshEdge(startEdge , endEdge  , Names = ["start_cu
         "posif" : SurFaceInfo
     }
     return returnDic
+
+
+def d_MeshHardEdge_Ctrl(MeshItem , Name , size =1 , Position = False):
+    ReturnItem = None
+    
+    if cmds.objectType(MeshItem) == "transform" or cmds.objectType(MeshItem)  == "mesh":
+        cmds.select(MeshItem)
+        cmds.polySelectConstraint( m =3 ,t = 0x8000  ,sm =1)
+        HardEdges = cmds.ls(sl =1,fl =1)
+        
+        Ctrl = cmds.createNode("transform" , n = Name)
+        PosT = [0,0,0]
+        PosR = [0,0,0]
+        if Position:
+            CP = cmds.parentConstraint(MeshItem , Ctrl, mo =0)
+            PosT = cmds.xform(Ctrl , q =1, ws =1 , t =1)
+            PosR = cmds.xform(Ctrl , q =1, ws =1 , ro =1)
+            PosT = [-1 * x for x in PosT]
+            cmds.delete(CP)
+        
+        for i, x in enumerate(HardEdges):
+            cmds.select(x)
+            Crv = cmds.polyToCurve(degree =1, form=2)
+            cmds.xform(Crv , ws =1, t = PosT)
+            cmds.xform(Crv , ws =1, ro = PosR)
+            #cmds.makeIdentity(Crv , a =1,t =1)
+            
+            
+            Shp = cmds.listRelatives(Crv , s =1 )[0]
+            if Position:
+                Cv = cmds.ls(Shp + ".cv[*]" ,fl =1)
+                print (Cv)
+                cmds.select(Cv ,r =1)
+                
+                cmds.move( PosT[0],PosT[1] , PosT[2] , r =1)
+            ReNameShp = cmds.rename(Shp ,"{}{}Shape" .format(Name , i+1))
+            cmds.parent(ReNameShp , Ctrl ,r =1, s=1)
+            cmds.delete( Crv  )
+
+        cmds.scale(size , size , size , Ctrl)
+        cmds.makeIdentity(Ctrl , a =1 , s =1, pn =1)
+        ReturnItem = Ctrl
+    
+    return Ctrl
+
+
+def Create_Foli(Name , Geo = None , ParameterUV = (0.5 , 0.5)):
+    
+    FoliShp = cmds.createNode( "follicle", n = Name + "Shape" )
+    FoliTransForm = cmds.listRelatives(FoliShp , p = 1 , type= "transform")
+    returnList = [FoliTransForm ,  FoliShp]
+    Shp = None
+    OutputAttr = ".outMesh"
+    InputAttr = ".inputMesh"
+    if Geo and cmds.objExists(Geo ):
+        if cmds.objectType(Geo) == "transform":
+            Shp = cmds.listRelatives(Geo , s =1 )[0]
+        
+        if cmds.objectType(Shp) == "nurbsSurface":
+            OutputAttr = ".local"
+            InputAttr = ".inputSurface"
+        
+        cmds.connectAttr("{}{}" .format(Geo , OutputAttr) , "{}{}" .format(FoliShp , InputAttr) ,f =1)
+        cmds.connectAttr("{}.worldMatrix[0]" .format(Geo ) , "{}.inputWorldMatrix" .format(FoliShp ) ,f =1)
+        
+    for  i, Axis in enumerate("UV"):
+        cmds.setAttr("{}.parameter{}" .format(FoliShp , Axis) , ParameterUV[i])
+    return returnList
