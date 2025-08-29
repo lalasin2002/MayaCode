@@ -7,6 +7,19 @@ from collections import OrderedDict
 import re
 
 def uniqueName(Name , maxLoop = 100 ):
+    """
+    Maya 씬 내에서 고유한 이름을 생성합니다.
+
+    주어진 이름을 기반으로, 이미 존재하는 경우 숫자 접미사를 붙여
+    중복되지 않는 새 이름을 찾아 반환합니다.
+
+    Args:
+        Name (str): 기본으로 사용할 이름 문자열.
+        maxLoop (int, optional): 고유 이름을 찾기 위해 시도할 최대 반복 횟수. 기본값은 100.
+
+    Returns:
+        str: Maya 씬 내에서 고유성이 보장된 이름.
+    """
     string_type = None
     try:
         string_type = basestring
@@ -513,7 +526,7 @@ def Create_Distance(startObj_or_pos , endObj_or_pos , Names = ["startlocator" , 
             DistanceName = "{}{}{}" .format(Names[2] , DistanceShapeSuffix , "" if DistanceCount == 0 else DistanceCount)
             if not cmds.objExists(DistanceName ):
                 break
-            DistacneCount += 1
+            DistanceCount += 1
         DistanceShp = cmds.createNode("distanceDimShape" , n = DistanceName )
         Distance = cmds.listRelatives(DistanceShp , p =1 , type= "transform")
         Distance = cmds.rename(Distance[0] , '{}{}' .format(Names[2]  , "" if DistanceCount == 0 else DistanceCount))
@@ -643,6 +656,37 @@ def Create_Pocif_FromMeshEdge(Edge, Parameter =0.5, Names = ["curveFromMeshEdge"
     return returnDic
 
 def Create_PointOnSurface_FromMeshEdge(startEdge , endEdge  , Names = ["start_curveFromMeshEdge" , "end_curveFromMeshEdge" , "startEnd_loft" , "startEnd_surFace"] ):
+    """
+    두 메쉬 엣지(startEdge, endEdge)를 기반으로 Loft(로프트)된 서피스를 생성하고,
+    해당 서피스 위의 특정 지점 정보를 읽는 노드 네트워크를 구성합니다.
+
+    이 함수는 두 엣지로부터 각각 동적인 커브를 생성한 뒤, 이 커브들을 로프트하여
+    하나의 서피스를 만듭니다. 그 다음, 'pointOnSurfaceInfo' 노드를 생성하여
+    서피스 위의 특정 파라미터(기본값: U=0.5, V=0.5)에 대한 정보를 실시간으로
+    읽어올 수 있도록 설정합니다.
+
+    Args:
+        startEdge (str): 로프트의 시작 커브가 될 엣지 컴포넌트 이름.
+                         (예: 'pCube1.e[100]')
+        endEdge (str): 로프트의 끝 커브가 될 엣지 컴포넌트 이름.
+                       (예: 'pCube1.e[102]')
+        Names (list, optional):
+            생성될 유틸리티 노드들의 기본 이름 리스트.
+            [0]: 시작 엣지용 'curveFromMeshEdge' 노드 이름
+            [1]: 끝 엣지용 'curveFromMeshEdge' 노드 이름
+            [2]: 'loft' 노드 이름
+            [3]: 'pointOnSurfaceInfo' 노드 이름
+
+    Returns:
+        dict:
+            생성된 모든 주요 노드들의 이름을 담은 딕셔너리.
+            {
+                "start_cfme": (str) 시작 엣지로부터 생성된 curveFromMeshEdge 노드,
+                "end_cfme": (str) 끝 엣지로부터 생성된 curveFromMeshEdge 노드,
+                "loft": (str) 생성된 loft 노드,
+                "posif": (str) 생성된 pointOnSurfaceInfo 노드
+            }
+    """
     startCFME = Create_CurveFromMeshEdge(startEdge,  Names[0] )
     endCFME = Create_CurveFromMeshEdge(endEdge, Names[1] )
     LoftName = uniqueName(Names[2])
@@ -672,6 +716,25 @@ def Create_PointOnSurface_FromMeshEdge(startEdge , endEdge  , Names = ["start_cu
 
 
 def d_MeshHardEdge_Ctrl(MeshItem , Name , size =1 , Position = False):
+    """
+    주어진 메쉬(MeshItem)의 하드 엣지(Hard Edge)를 감지하여,
+    해당 엣지들의 형태를 따라 커브 컨트롤러를 생성합니다.
+
+    이 함수는 먼저 메쉬에서 모든 하드 엣지를 찾습니다. 그 다음, 각 하드 엣지를
+    별도의 커브로 변환하고, 이 커브들을 하나의 그룹(컨트롤러)으로 묶습니다.
+    생성된 컨트롤러의 크기와 위치를 조절할 수 있습니다.
+
+    Args:
+        MeshItem (str): 컨트롤러를 생성할 대상 메쉬의 이름.
+        Name (str): 생성될 컨트롤러(그룹)의 이름.
+        size (float, optional): 컨트롤러의 전체적인 크기. 기본값은 1.
+        Position (bool, optional):
+            True이면 컨트롤러의 위치와 회전값을 대상 메쉬와 일치시킵니다.
+            False이면 월드 원점(0,0,0)에 생성됩니다. 기본값은 False.
+
+    Returns:
+        str: 생성된 컨트롤러(그룹)의 이름.
+    """
     ReturnItem = None
     
     if cmds.objectType(MeshItem) == "transform" or cmds.objectType(MeshItem)  == "mesh":
@@ -715,25 +778,55 @@ def d_MeshHardEdge_Ctrl(MeshItem , Name , size =1 , Position = False):
     return Ctrl
 
 
-def Create_Foli(Name , Geo = None , ParameterUV = (0.5 , 0.5)):
-    
+def Create_Foli(Name , Geo = None , ParameterUV = (0.5 , 0.5)): #2025
+    """
+    지오메트리(메쉬 또는 NURBS 서피스)에 부착되는 폴리클(Follicle) 노드를 생성합니다.
+
+    이 함수는 지정된 UV 좌표에 폴리클을 생성하고, 이를 대상 지오메트리에 연결하여
+    지오메트리가 변형될 때 폴리클이 표면을 따라 움직이도록 합니다.
+    폴리클은 주로 헤어, 리깅, 오브젝트 부착 등에 사용됩니다.
+
+    Args:
+        Name (str): 생성될 폴리클의 기본 이름.
+        Geo (str, optional): 폴리클을 부착할 대상 지오메트리(메쉬 또는 NURBS 서피스)의 이름.
+                             None이면 연결 없이 폴리클만 생성됩니다. 기본값은 None.
+        ParameterUV (tuple or list, optional):
+            폴리클이 위치할 서피스의 UV 좌표. (U, V) 형식으로 제공합니다.
+            값의 범위는 일반적으로 0.0에서 1.0 사이입니다. 기본값은 (0.5, 0.5) (중앙).
+
+    Returns:
+        list: [폴리클 트랜스폼 노드 이름, 폴리클 쉐잎 노드 이름] 리스트.
+    """
     FoliShp = cmds.createNode( "follicle", n = Name + "Shape" )
-    FoliTransForm = cmds.listRelatives(FoliShp , p = 1 , type= "transform")
+    FoliTransForm = cmds.listRelatives(FoliShp , p = 1 , type= "transform")[0]
+    FoliTransForm = cmds.rename(FoliTransForm, Name)
     returnList = [FoliTransForm ,  FoliShp]
+
+    cmds.connectAttr("{}.outTranslate" .format(FoliShp) , "{}.translate".format(FoliTransForm) , f=1)
+    cmds.connectAttr("{}.outRotate" .format(FoliShp) , "{}.rotate".format(FoliTransForm) , f=1)
     Shp = None
     OutputAttr = ".outMesh"
     InputAttr = ".inputMesh"
-    if Geo and cmds.objExists(Geo ):
+
+    # 지오메트리가 제공되었는지 확인
+    if Geo and cmds.objExists(Geo):
+        # 입력된 지오메트리의 쉐잎 노드를 찾음
         if cmds.objectType(Geo) == "transform":
             Shp = cmds.listRelatives(Geo , s =1 )[0]
+        else:
+            Shp = Geo # 이미 쉐잎 노드일 경우
         
+        # 지오메트리 타입에 따라 연결할 속성을 결정 (NURBS 또는 메쉬)
         if cmds.objectType(Shp) == "nurbsSurface":
             OutputAttr = ".local"
             InputAttr = ".inputSurface"
         
+        # 지오메트리의 아웃풋과 월드 매트릭스를 폴리클에 연결
         cmds.connectAttr("{}{}" .format(Geo , OutputAttr) , "{}{}" .format(FoliShp , InputAttr) ,f =1)
         cmds.connectAttr("{}.worldMatrix[0]" .format(Geo ) , "{}.inputWorldMatrix" .format(FoliShp ) ,f =1)
         
+    # 파라미터 UV 값 설정
     for  i, Axis in enumerate("UV"):
         cmds.setAttr("{}.parameter{}" .format(FoliShp , Axis) , ParameterUV[i])
+        
     return returnList

@@ -1,0 +1,23 @@
+# -*- coding: utf-8 -*-
+import maya.cmds as cmds
+import maya.mel as mel
+import maya.OpenMaya as om
+
+import sys , os , pprint
+
+dirPath =os.path.abspath(r"D:\Code\MayaCode\completeCode")
+if os.path.isdir(dirPath):
+    print ("nn")
+    if dirPath not in sys.path:
+        sys.path.append(dirPath)
+
+
+pprint.pprint(sys.path)
+
+import Class
+import Def
+
+from Def.CreateNode import Create_Loc
+
+# 4. 함수를 바로 호출합니다.
+Loc = Create_Loc("Test")

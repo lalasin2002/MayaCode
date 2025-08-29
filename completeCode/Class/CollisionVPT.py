@@ -328,7 +328,6 @@ class c_Create_CorrectiveJnt():
 
 
 
-'''
 sel = cmds.ls(sl =1 , type = "joint")
 DeJnt= ["Pelvis_Ctrl" , "L_Leg_Jnt"]
 
@@ -338,4 +337,3 @@ Corrective.Set_PrimaryAxis("Y" ,"Z")
 Corrective.Set_Destination_Jnt(DeJnt[0] , DeJnt[1]) 
 Corrective.Build()
 
-'''

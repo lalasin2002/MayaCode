@@ -341,13 +341,14 @@ class IKspline:
 
 
 
+sel = cmds.ls(sl =1)
 
-
-
-
-
-
-
+JntSpline = IKspline(sel , "L_LegArc")
+JntSpline.setAxis("Y")
+JntSpline.createCrv()
+JntSpline.setStretch("Stretch")
+JntSpline.setVolume("Volume")
+JntSpline.setIKBuild()
 
             
 

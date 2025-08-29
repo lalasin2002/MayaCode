@@ -146,4 +146,16 @@ class SetFKIK():
 
 
 
-                        
+
+cmds.select("L_Hip_FK_Jnt" , hierarchy=1)
+FKs = cmds.ls(sl =1 , type = "joint")
+cmds.select(cl =1)
+cmds.select("L_Hip_IK_Jnt" , hierarchy=1)
+Iks = cmds.ls(sl =1 , type = "joint")
+cmds.select(cl =1)
+cmds.select("L_Hip_FKIK_Jnt" , hierarchy=1)
+FKIks = cmds.ls(sl =1 , type = "joint")
+FKIK = SetFKIK("L_Leg_FKIK_Ctrl" , "FKIK_Blend")
+FKIK.Jnt_Array(FKs , Iks , FKIks)
+FKIK.Vis_Array("L_Hip_FK_Setting" , "L_Hip_IK_Setting")
+FKIK.Build()
