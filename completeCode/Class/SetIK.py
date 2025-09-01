@@ -15,8 +15,9 @@ class Ikrig:
         self.ScaleDefault = None
         self.ScalingMD = None
         self.CurrentDistanceNode = None
-        self.IK = None
-        self.resultNodes = []
+        self.CurrentIK = None
+        self.resultNodes = {}
+        self.poleVectorStretchNodes = {}
         self.stretchBC = None
         self.volumeBC = None
         self.stretchDistance = None
@@ -362,30 +363,30 @@ class Ikrig:
         self.AxisOtherDic["axis"] = lowAxisOtherlst
         self.log("> Primary Axis : {pa}\n> Other Axis : {oa}" .format(pa =self.AxisDic["Axis"] , oa = self.AxisOtherDic["Axis"]), printLog)
 
-    def getPoleVectorPosData(first , second , third , scalar = 1):
+    def getPoleVectorPosData(self ,first , second , third , scalar = 1):
         poleVecorPos = None
-        if all(cmds.objectType(x) == "transform" in x for x in [first , second , third]):
+        #if all(cmds.objectType(x) == "transform" in x for x in [first , second , third]):
 
-            firstPos = cmds.xform(first , q= 1, ws =1 , t =1)
-            secondPos = cmds.xform(second , q= 1, ws =1 , t =1)
-            thirdPos =  cmds.xform(third , q= 1, ws =1 , t =1)
+        firstPos = cmds.xform(first , q= 1, ws =1 , t =1)
+        secondPos = cmds.xform(second , q= 1, ws =1 , t =1)
+        thirdPos =  cmds.xform(third , q= 1, ws =1 , t =1)
 
-            firstVector = om.MVector(firstPos[0] , firstPos[1] ,firstPos[2])
-            secondVector = om.MVector(secondPos[0], secondPos[1] , secondPos[2])
-            thirdVector = om.MVector(thirdPos[0] , thirdPos[1] , thirdPos[2])
+        firstVector = om.MVector(firstPos[0] , firstPos[1] ,firstPos[2])
+        secondVector = om.MVector(secondPos[0], secondPos[1] , secondPos[2])
+        thirdVector = om.MVector(thirdPos[0] , thirdPos[1] , thirdPos[2])
 
-            firstThirdVector = (thirdVector - firstVector)
-            firstSecondVector = (secondVector - firstVector)
+        firstThirdVector = (thirdVector - firstVector)
+        firstSecondVector = (secondVector - firstVector)
 
-            dotProduct = firstThirdVector * firstSecondVector
-            proJectLength = float(dotProduct)/(firstThirdVector.length())
+        dotProduct = firstThirdVector * firstSecondVector
+        proJectLength = float(dotProduct)/(firstThirdVector.length())
 
-            normalizeFirstThird = firstThirdVector.normal()
-            proJectVector = normalizeFirstThird * proJectLength
-            arrowVector = (firstSecondVector - proJectVector) * scalar 
-            poleVector = arrowVector + secondVector
+        normalizeFirstThird = firstThirdVector.normal()
+        proJectVector = normalizeFirstThird * proJectLength
+        arrowVector = (firstSecondVector - proJectVector) * scalar 
+        poleVector = arrowVector + secondVector
 
-            poleVecorPos = [poleVector.x , poleVector.y , poleVector.z]
+        poleVecorPos = [poleVector.x , poleVector.y , poleVector.z]
         
         return poleVecorPos
 
@@ -437,6 +438,8 @@ class Ikrig:
                 "TargetJnt" : TargetJnt
             }
             self.IKs.append(IK_Dic)
+            self.CurrentIK = IK
+            
             self.log("> Create IK handle : {}\n> Create IK handleGrp : {}" .format(IK_Dic["IKhandle"], IK_Dic["Group"])  ,printLog  )
         else:
             self.log("> Not Exist objs to set Ikhandle: {} , {}" .format(RootJnt , TargetJnt) , printLog )
@@ -510,7 +513,7 @@ class Ikrig:
 
 
             self.log("> Add {tg}.{attr} volume Attribute\n> Min : {min}\n> Max : {max}" .format(tg = Target , attr = AttrName , min = MinV , max = MaxV) ,printLog)
-    def addAttrPoleVectorStretch(self , Target , AttrName = "PoleVector Stretch" , Min = 0 , Max = 10 , printLog = False):
+    def addAttrPoleVectorStretch(self , Target , AttrName = "PoleVectorStretch" , Min = 0 , Max = 10 , printLog = False):
         if cmds.objExists(Target):
             IsAttr = cmds.attributeQuery(AttrName , node = Target , exists= 1)
             if not IsAttr:
@@ -531,11 +534,14 @@ class Ikrig:
                         MaxV = cmds.attributeQuery(AttrName , node = Target , maximum=1)
                         self.poleVectorStretchAttrDic["max"] = MaxV[0]
             self.log("> Add {tg}.{attr} poleVectorStretch Attribute\n> Min : {min}\n> Max : {max}" .format(tg = Target , attr = AttrName , min = MinV , max = MaxV) ,printLog)
-    def setDistance(self,Start , End ):
+    def setDistance(self,Start , End , NameList = None):
+        if NameList is None:
+            NameList = [Start , End , End + "End"]
+
         if all(cmds.objExists(x) == True for x in [Start , End]):
-            StartLoc = "{}_loc" .format(Start)
-            EndLoc = "{}_loc" .format(End)
-            DT = "{}_Distance" .format(End)
+            StartLoc = "{}_loc" .format(NameList[0])
+            EndLoc = "{}_loc" .format(NameList[1])
+            DT = "{}_Distance" .format(NameList[2])
             DictanceDic = self.Create_Distance(Start , End , [StartLoc , EndLoc , DT])
 
             self.DistanceDic = DictanceDic
@@ -559,132 +565,6 @@ class Ikrig:
         
 
 
-    '''
-    ###OldCode
-    def setStretch(self ,Name = "" , Jntlist = None , DistanceNode = None  ,inputScaleDefault = None, printLog = False):
-        TotalLength = None
-        #Jntlist = []
-        GetDistance = None
-        #resultNodes = []
-
-        if Name == "":
-            Name = self.uniqueName("Stretch")
-        else:
-            Name = self.uniqueName(Name)
-
-
-        if self.ScaleDefault is None:
-            self.setScaleDefault(inputScaleDefault)
-        if self.ScaleDefault:
-            if cmds.objExists(self.ScaleDefault):
-                pass
-            else:
-                self.setScaleDefault(inputScaleDefault)
-
-
-        if Jntlist:
-            self.defineJntlist(Jntlist)
-            Jntlist = self.Jntlist
-        else:
-            if self.Jntlist:
-                Jntlist = self.Jntlist
-        
-        
-        if Jntlist and all( cmds.objectType(x) == "joint" for x in Jntlist ):
-            
-            if DistanceNode == None:
-                if len(self.Distances ) == 0:
-                    self.setDistance(Jntlist [0],Jntlist [-1])
-
-            DistanceNode  = self.Distances[-1]
-            if DistanceNode  and self.stretchAttrDic["obj"] and self.stretchAttrDic["attr"]:
-                if not cmds.objectType(DistanceNode ) == "distanceDimShape" or cmds.objectType(DistanceNode ) == "distanceBetween":
-                    raise (">> Invalid input. Expected a DistanceNode  Shape")
-
-                if not self.stretchBC:
-
-                    self.Distance = DistanceNode  
-                    self.Distances = set(self.Distances)
-                    self.Distances.add(DistanceNode )
-                    self.Distances = list(self.Distances)
-
-
-                    GetDistance = round(cmds.getAttr(DistanceNode  + ".distance") ,3)
-                    ScalingMD = cmds.createNode("multiplyDivide" , n = self.ScaleDefault + "_Scaling_MD")
-                    NormalMD = cmds.createNode("multiplyDivide" , n = Name + "_Nor_MD")
-                    LengthCon = cmds.createNode("condition" , n = Name + "_Length_CON")
-                    AttrSR = cmds.createNode("setRange" ,  n = Name + "_SR")
-                    StretchBC = cmds.createNode("blendColors" , n  = Name + "_BC" )
-
-                    OldJnt = None
-                    TotalLength = 0
-                    for x in Jntlist:
-                        if OldJnt:
-                            JntLength = self.Get_Distance(OldJnt , x )
-                            TotalLength += JntLength
-
-                            IsDicNode = any(y.get("Jnt") == x for y in self.resultNodes)
-                            FindIndex = None
-                            if IsDicNode:
-                                
-                                FindIndex = next((Num for Num , i in enumerate(self.resultNodes)if i.get("Jnt") == x), None ) 
-                                if FindIndex is not None:
-
-                                    resultMDL = cmds.createNode("multDoubleLinear" , n =  "{}_result_MDL".format(x))
-                                    
-                                    cmds.setAttr(resultMDL + ".input2" , JntLength )#Error
-                                    self.resultNodes[FindIndex]["MDL"] = resultMDL
-
-                        OldJnt = x
-
-                    #print ("self.stretchAttrDic["'min'"]" , self.stretchAttrDic["min"])
-                    cmds.setAttr(ScalingMD + ".input1X" , GetDistance)
-                    cmds.setAttr(NormalMD + ".operation" , 2)
-                    cmds.setAttr(LengthCon + ".operation" , 2)
-                    cmds.setAttr(LengthCon + ".colorIfFalseR" , 1)
-                    cmds.setAttr(LengthCon + ".secondTerm" , TotalLength)
-
-                    cmds.setAttr(AttrSR + ".minX" , 0)
-                    cmds.setAttr(AttrSR + ".maxX" , 1)
-                    cmds.setAttr(AttrSR + ".oldMinX" , self.stretchAttrDic["min"])
-                    cmds.setAttr(AttrSR + ".oldMaxX" , self.stretchAttrDic["max"])
-
-                    cmds.setAttr(StretchBC + ".color1R" , 1)
-                    cmds.setAttr(StretchBC + ".color2R" , 1)
-
-
-                    #ScalingMD
-                    cmds.connectAttr(self.ScaleDefault + ".scaleX" , ScalingMD + ".input2X" , f=1)
-                    #NormalMD
-                    cmds.connectAttr(DistanceNode  + ".distance" , NormalMD + ".input1X" , f=1)
-                    cmds.connectAttr(ScalingMD + ".outputX" , NormalMD + ".input2X" , f=1)
-                    #LengthCon
-                    cmds.connectAttr(DistanceNode  + ".distance" , LengthCon + ".firstTerm" , f=1)
-                    cmds.connectAttr(NormalMD + ".outputX" , LengthCon + ".colorIfTrueR" , f=1)
-                    #AttrSR
-                    cmds.connectAttr("{}.{}".format(self.stretchAttrDic["obj"] , self.stretchAttrDic["attr"])  , AttrSR + ".valueX" , f=1)
-                    #StretchBC
-                    cmds.connectAttr(AttrSR + ".outValueX" , StretchBC + ".blender" ,f =1)
-                    cmds.connectAttr(LengthCon + ".outColorR" , StretchBC + ".color1R" , f=1)
-
-                    self.stretchBC = StretchBC
-                
-
-
-                for  i , x in enumerate(self.resultNodes):
-                    
-                    if not x["MDL"] is None:
-                        cmds.connectAttr(self.stretchBC + ".outputR" , x["MDL"] + ".input1" , f =1)
-                        cmds.connectAttr(x["MDL"] + ".output" , x["Jnt"]+ ".translate{}" .format(self.AxisDic["Axis"]) , f=1 )
-
-                #self.stretchBC = StretchBC
-                #self.resultNodes = resultNodes
-                self.IsIKstretch = True
-                self.stretchDistance = DistanceNode
-        else:
-            raise TypeError("Invalid input. Expected a Existed Joint list")
-        '''
-
 
     def setSlide(self , Jnt , AttrTarget , AttrName ):
         if cmds.objExists(Jnt):
@@ -704,15 +584,12 @@ class Ikrig:
                     ADL = cmds.createNode("addDoubleLinear" , n = Jnt + "_Slide" )
 
                     IsCntAttr = cmds.listConnections( Jnt + ".translate{}" .format(self.AxisDic["Axis"]),s =1  , plugs=True )[-1]
-                    #print ("IsCntAttr  >>> " , IsCntAttr )
+                    
                     
                     if IsCntAttr:
                         cmds.disconnectAttr(IsCntAttr , Jnt + ".translate{}" .format(self.AxisDic["Axis"]) )
 
-                    #if IsCntAttr:
-                    #    CBdelete = 'CBdeleteConnection "{}.translate{}" ; ' .format(Jnt , self.AxisDic["Axis"])
-                    #    mel.eval(CBdelete)
-                    
+
                     
                     cmds.connectAttr("{}.{}" .format(AttrTarget , AttrName) , ADL + ".input2" , f=1)
                     cmds.connectAttr("{}.{}" .format(MDL, "output")  ,ADL + ".input1" , f=1)
@@ -722,121 +599,77 @@ class Ikrig:
                     self.resultNodes[Jnt]["ADL"] = ADL
                     self.resultNodes[Jnt]["SlideAttr"] = "{}.{}" .format(AttrTarget , AttrName)
 
-    def setVolume(self ,Name = "" , Jntlist = None, stretchBC = None ,printLog = False):
-        DisTance = None
-        GetDTValue = None
-        if Name == "":
-            Name = self.uniqueName("Volume")
-        else:
-            Name = self.uniqueName(Name)
+    
+    def createPoleVectorStretchNode(self , TargetJnt , inputNode = None , inputAttr = None ):
+        try:
+            string_type = basestring
+        except NameError:
+            string_type = str
 
-        if Jntlist:
-            self.defineJntlist(Jntlist)
-            Jntlist = self.Jntlist
-        else:
-            if self.Jntlist:
-                Jntlist = self.Jntlist
+        noralizeNode = None 
+        noralizeNodeAttr = None
 
-        if stretchBC is None:
-            if not self.stretchBC:
-                if not self.stretchDistance:
-                    # Jntlist를 직접 사용하여 시작점과 끝점을 지정합니다.
-                    TargetRoot = Jntlist[0]
-                    TargetEnd = Jntlist[-1]
-                    self.setDistance(TargetRoot, TargetEnd)
-                    DisTance = self.Distances[-1]
-                    GetDTValue = round(cmds.getAttr(DisTance + ".distance"),3)
-                if not self.ScaleDefault:
-                    self.setScaleDefault()
+        if not cmds.objectType(TargetJnt) == "joint":
+            raise TypeError(">  Invalid <TargetJnt> input. Expected a Existed Joint list")
+        if not TargetJnt in self.resultNodes:
+            raise TypeError(">  Invalid <TargetJnt > input. Could not Found <TargetJnt> in <self.resultNodes.>")
 
-                OldJnt = None
-                TotalLength = 0
-                for x in Jntlist:
-                    if OldJnt:
-                        JntLength = self.Get_Distance(OldJnt , x )
-                        TotalLength += JntLength
-                    OldJnt = x 
+        if not inputNode:
+            if self.stretchNodeDic["stretchBC"]:
+                noralizeNode = self.stretchNodeDic["stretchBC"]
+                noralizeNodeAttr = "outputR"
+            else:
+                raise ValueError(">  The required node 'stretchBC' is not defined or does not exist in the scene.")
+        elif inputNode and cmds.objExists("{}" .format(inputNode)):
+            if inputAttr and  isinstance(inputAttr, string_type ) and cmds.objExists("{}.{}" .format(inputNode , inputAttr)):
 
-                stretchBC = cmds.createNode("blendColors" , n  = Name + "_stretch_BC" )
-                ScalingMD = cmds.createNode("multiplyDivide" , n = Name + "_Scaling_MD")
-                NormalMD = cmds.createNode("multiplyDivide" , n = Name + "_Nor_MD")
-                LengthCon = cmds.createNode("condition" , n = Name + "_Length_CON")
+                noralizeNode = inputNode
+                noralizeNodeAttr = inputAttr
+            else :
+                raise TypeError(">  Invalid <inputAttr> input. Expect a Existed <{}.{}> Attr" .format(inputNode , inputAttr))
+            
+    
+        if not self.poleVectorStretchAttrDic["obj"] and not self.poleVectorStretchAttrDic["attr"]:
+            if all(cmds.objectType(x) == "joint" for x in self.Jntlist):
+                self.addAttrPoleVectorStretch(self.Jntlist[0])
+            else:
+                raise ValueError("> Could not find the required attribute: 'poleVectorStretchAttr'")
+        
 
-                cmds.setAttr(ScalingMD + ".input1X" , GetDTValue)
-                cmds.setAttr(stretchBC + ".color1R" , 1)
-                cmds.setAttr(stretchBC + ".color2R" , 1)
-                cmds.setAttr(stretchBC + ".blender" , 1)
+        DivMD = cmds.createNode("multiplyDivide" , n = TargetJnt + "_poleVectorStretch_Div_MD")
+        ScalingMD = cmds.createNode("multiplyDivide" , n  = TargetJnt + "_poleVectorStretch_ScalingMD" )
+        PoleStretchBC = cmds.createNode("blendColors", n  = TargetJnt + "_poleVectorStretch_BC" )
+        AttrSR = cmds.createNode("setRange" ,  n =TargetJnt + "_poleVectorStretch_SR")
 
-                cmds.setAttr(LengthCon + ".operation" , 2)
-                cmds.setAttr(LengthCon + ".colorIfFalseR" , 1)
-                cmds.setAttr(LengthCon + ".secondTerm" , TotalLength)
-                
-                #ScalingMD
-                cmds.connectAttr(self.ScaleDefault + ".scaleX" , ScalingMD + ".input2X" , f=1)
-                #NormalMD
-                cmds.connectAttr(DisTance  + ".distance" , NormalMD + ".input1X" , f=1)
-                cmds.connectAttr(ScalingMD + ".outputX" , NormalMD + ".input2X" , f=1)
-                #LengthCon
-                cmds.connectAttr(DisTance  + ".distance" , LengthCon + ".firstTerm" , f=1)
-                cmds.connectAttr(NormalMD + ".outputX" , LengthCon + ".colorIfTrueR" , f=1)
-                #StretchBC
-                cmds.connectAttr(LengthCon + ".outColorR" , stretchBC + ".color1R" , f=1)
+        cmds.setAttr(DivMD + ".input1X" , 1)
+        cmds.setAttr(DivMD + ".operation" , 2)
 
-                self.stretchBC = stretchBC
+        cmds.setAttr(PoleStretchBC + ".color1R" , 1)
+        cmds.setAttr(PoleStretchBC + ".color2R" , 1)
+            
+        cmds.setAttr(AttrSR + ".minX" , 0)
+        cmds.setAttr(AttrSR + ".maxX" , 1)
+        cmds.setAttr(AttrSR + ".oldMinX" , self.poleVectorStretchAttrDic["min"])
+        cmds.setAttr(AttrSR + ".oldMaxX" , self.poleVectorStretchAttrDic["max"])
+        
+        cmds.connectAttr("{}.{}" .format(noralizeNode , noralizeNodeAttr) , PoleStretchBC + ".color2R" , f=1)
+        cmds.connectAttr(ScalingMD + ".outputX" ,DivMD + ".input2X" , f=1)
+        cmds.connectAttr(DivMD + ".outputX" , PoleStretchBC + ".color1R" , f=1)
+        cmds.connectAttr(AttrSR + ".outValueX" ,PoleStretchBC +  ".blender" ,f =1)
+        cmds.connectAttr("{}.{}" .format(self.poleVectorStretchAttrDic["obj"] , self.poleVectorStretchAttrDic["attr"]) , AttrSR + ".valueX" ,f=1 )
 
+        
 
-        if Jntlist and all( cmds.objectType(x) == "joint" for x in Jntlist ):
-
-            if self.volumeAttrDic["obj"] and self.volumeAttrDic["attr"] and self.volumeAttrDic["offsetAttr"]:
-
-
-                volumeBC = cmds.createNode("blendColors" , n  = Name + "_BC" )
-                AttrSR = cmds.createNode("setRange" ,  n = Name + "_SR")
-                DivMD = cmds.createNode("multiplyDivide" , n = Name + "_Div_MD")
-                PowerMD = cmds.createNode("multiplyDivide" , n = Name + "_Power_MD")
-                OffsetADL = cmds.createNode("addDoubleLinear" , n = Name + "_offset_ADL")
-
-                cmds.setAttr(volumeBC + ".color1R" , 1)
-                cmds.setAttr(volumeBC+ ".color2R" , 1)
-
-                cmds.setAttr(DivMD + ".operation" , 2)
-                cmds.setAttr(PowerMD + ".operation" , 3) #Power
-
-                cmds.setAttr(DivMD + ".input1X" , 1)
-                cmds.setAttr(PowerMD + ".input2X" , 0.5)
-
-                cmds.setAttr(AttrSR + ".minX" , 0)
-                cmds.setAttr(AttrSR + ".maxX" , 1)
-                cmds.setAttr(AttrSR + ".oldMinX" , self.volumeAttrDic["min"])
-                cmds.setAttr(AttrSR + ".oldMaxX" , self.volumeAttrDic["max"])
- 
-
-
-                cmds.connectAttr(self.stretchBC + ".outputR" , volumeBC + ".color1R" , f=1)
-                cmds.connectAttr(AttrSR + ".outValueX" , volumeBC + ".blender" ,f =1)
-                cmds.connectAttr("{}.{}" .format(self.volumeAttrDic["obj"]  ,self.volumeAttrDic["attr"] ) ,AttrSR + ".valueX" , f =1 )
-
-                cmds.connectAttr(volumeBC + ".outputR" , DivMD + ".input2X" , f= 1)
-                cmds.connectAttr(DivMD + ".outputX" ,PowerMD + ".input1X" , f=1 )
-                cmds.connectAttr(PowerMD + ".outputX" , OffsetADL + ".input1" , f=1)
-
-                cmds.connectAttr("{}.{}" .format(self.volumeAttrDic["obj"]  ,self.volumeAttrDic["offsetAttr"] ) , OffsetADL + ".input2" ,f =1 )
-
-
-                #for data in self.resultNodes:
-                for Jnt in Jntlist:
-                    FindIndex = None
-                    IsDicNode = any(y.get("Jnt") == Jnt for y in self.resultNodes)
-                    if IsDicNode:
-                        FindIndex = next((Num for Num , i in enumerate(self.resultNodes)if i.get("Jnt") == Jnt), None ) 
-                        if FindIndex:
-                            self.resultNodes[FindIndex]["VolumeADL"] = OffsetADL
-
-                        for Axis in self.AxisOtherDic["Axis"]:
-                            cmds.connectAttr(OffsetADL + ".output", Jnt + ".scale{}" .format(Axis) , f=1)
-
-                self.IsIKVolume = True
-
+        self.poleVectorStretchNodes[TargetJnt] = {
+            "divMD": DivMD,
+            "scalingMD": ScalingMD,
+            "poleStretchBC": PoleStretchBC,
+            "stretchBC" : noralizeNode,
+            "stretchBC_Attr" : noralizeNodeAttr,
+            "MDL" : self.resultNodes[TargetJnt]["MDL"],
+            "MDL_Attr" : self.resultNodes[TargetJnt]["MDL"] + ".input1",
+            "attrSR": AttrSR
+        }
 
 
     def createStretchNode(self ,Name , Jntlist , DistanceNode , ScaleDefaultDate= None ):
@@ -866,7 +699,8 @@ class Ikrig:
                         self.stretchNodeDic["jointList"].append(OldJnt)
                         JntLength = self.Get_Distance(OldJnt , Jnt )
 
-                        #print (">>>>>>>>>>>>>>>" , Jnt  ,JntLength  )
+
+                        
                         TotalLength += JntLength
                     OldJnt = Jnt
                 
@@ -945,6 +779,7 @@ class Ikrig:
             string_type = str
 
         
+        
 
         if inputNode is None:
             if self.stretchNodeDic["stretchBC"]  and  cmds.objExists(self.stretchNodeDic["stretchBC"]):
@@ -952,11 +787,16 @@ class Ikrig:
                 noralizeNodeAttr ="outputR" 
             else:
                 raise ValueError(">  The required node 'stretchBC' is not defined or does not exist in the scene.")
-        elif isinstance(inputNode , string_type) and cmds.objExists("{}.{}" .format(inputNode , inputAttr )):
-            noralizeNode = inputNode
-            noralizeNodeAttr = inputAttr
+        elif inputNode and cmds.objExists("{}" .format(inputNode)):
+            if inputAttr and  isinstance(inputAttr, string_type ) and cmds.objExists("{}.{}" .format(inputNode , inputAttr)):
+
+                noralizeNode = inputNode
+                noralizeNodeAttr = inputAttr
+            else :
+                raise TypeError(">  Invalid <inputAttr> input. Expect a Existed <{}.{}> Attr" .format(inputNode , inputAttr))
 
         else:
+            print (inputNode , inputAttr) 
             raise ValueError(">  The required node 'stretchBC' is not defined or does not exist in the scene.")
 
 
@@ -1002,7 +842,7 @@ class Ikrig:
 
 
     def connectStrerchToJoint(self , TargetJoint , Axis = None , Length = None ):
-        
+        getPlusMinus = 1
         if Axis is None:
             Axis = self.AxisDic["Axis"]
         if not any(Axis == ax for ax in ["X" , "Y" , "Z"]):
@@ -1024,6 +864,8 @@ class Ikrig:
                         IsParentDic =ParentJnt[0] in self.resultNodes
                         if IsParentDic:
                             Length = self.Get_Distance(ParentJnt[0] ,TargetJoint )
+                            getTrans = cmds.getAttr(TargetJoint + ".translate{}" .format(self.AxisDic["Axis"]))
+                            getPlusMinus = int(getTrans)/int(abs( getTrans))
 
                         else:
                             raise ValueError("> <TargetJoint> is not in JointChain")
@@ -1034,7 +876,7 @@ class Ikrig:
 
                     resultMDL = cmds.createNode("multDoubleLinear" , n =  "{}_result_MDL".format(TargetJoint ))
                     self.resultNodes[TargetJoint]["MDL"] = resultMDL
-                    cmds.setAttr(self.resultNodes[TargetJoint]["MDL"] + ".input2" , Length)
+                    cmds.setAttr(self.resultNodes[TargetJoint]["MDL"] + ".input2" , Length * getPlusMinus)
 
                     cmds.connectAttr(self.stretchNodeDic["stretchBC"] + ".outputR" , self.resultNodes[TargetJoint]["MDL"] + ".input1" ,f =1 )
                     cmds.connectAttr(self.resultNodes[TargetJoint]["MDL"] + ".output" , TargetJoint + ".translate{}" .format( Axis) , f=1 )
@@ -1045,9 +887,83 @@ class Ikrig:
             raise ValueError("> Not existed a 'stretchBlend Node'." )
 
     def connectVolumeToJoint(self , TargetJoint , AxisList = None ):
-        pass
-    
+        try:
+            string_type = basestring
+        except NameError:
+            string_type = str
 
+        if AxisList is None:
+            AxisList = self.AxisOtherDic["Axis"]
+        if not isinstance(AxisList ,  (list, tuple) ): 
+            raise TypeError(">  Invalid <AxisList> input. Expected a List or Tuple ")
+        
+        MatchCount = sum( 1 for item in AxisList if item in ["X" , "Y" , "Z"])
+        if not MatchCount ==2:
+            raise ValueError(">   Invalid <AxisList> input. Expected exactly 2 elements from ['X', 'Y', 'Z']")
+        
+        if not cmds.objectType(TargetJoint) == "joint":
+            raise TypeError("> Invalid <TargetJoint > input. Expected a Existed Joint")
+        
+        if self.volumeNodeDic["offsetADL"] and self.volumeAttrDic["attr"] and self.volumeAttrDic["offsetAttr"]:
+
+            IsDicNode = TargetJoint in self.resultNodes
+            if IsDicNode:
+
+                for ax in AxisList:
+                    cmds.connectAttr(self.volumeNodeDic["offsetADL"] + ".output" , TargetJoint + ".scale{}" .format(ax) , f=1)
+                self.resultNodes[TargetJoint]["ADL"] = self.volumeNodeDic["offsetADL"]
+        else:
+            raise ValueError("> Not existed a 'volumeBlend Node'." )
+
+    def connectPoleVectorStretchToNode(self, TargetJnt , DistanceNode  , Length = None ):
+        try:
+            string_type = basestring
+        except NameError:
+            string_type = str
+
+        #JntLength = None
+
+        if not cmds.objectType(TargetJnt) == "joint":
+            raise TypeError(">  Invalid <TargetJnt> input. Expected a Existed Joint list")
+        if not TargetJnt in self.resultNodes or not self.poleVectorStretchNodes[TargetJnt]:
+            raise TypeError(">  Invalid <TargetJnt > input. Could not Found <TargetJnt> in <self.resultNodes.>")
+        
+        if cmds.objectType(DistanceNode) == "distanceDimShape" or cmds.objectType(DistanceNode) == "distanceBetween":
+            raise TypeError("> Invalid <DistanceNode> input. Expected a DistanceNode  Shape")
+        
+        if not self.ScaleDefault:
+            raise ValueError("> The required node <self.ScaleDefault>")
+        
+
+        
+        if Length is None or not isinstance(Length , float):
+            ParentJnt = cmds.listRelatives(TargetJnt , p =1 , type = "joint")
+            IsParentDic = None
+            if ParentJnt:
+                IsParentDic =ParentJnt[0] in self.resultNodes
+                if IsParentDic:
+                    Length = self.Get_Distance(ParentJnt[0] ,TargetJnt )
+                else:
+                    raise ValueError("> <TargetJoint> is not in JointChain")
+            else:
+                raise ValueError("> <TargetJoint> is not in JointChain")
+            
+            
+        
+        cmds.setAttr(self.poleVectorStretchNodes[TargetJnt]["scalingMD"] + ".input1X" , Length)
+        cmds.connectAttr(self.ScaleDefault + ".scaleX" , self.poleVectorStretchNodes[TargetJnt]["scalingMD"] + ".input2X" ,f=1)
+        cmds.connectAttr(DistanceNode  + ".distance" , self.poleVectorStretchNodes[TargetJnt]["divMD"]+ ".input1X" ,f=1)
+
+        
+        if self.poleVectorStretchNodes[TargetJnt]["MDL"]:
+            sourceAttr = "{}.{}" .format(self.poleVectorStretchNodes[TargetJnt]["stretchBC"] ,self.poleVectorStretchNodes[TargetJnt]["stretchBC_Attr"] )
+            destinationAttr = "{}.{}" .format(self.poleVectorStretchNodes[TargetJnt]["MDL"] , self.poleVectorStretchNodes[TargetJnt]["MDL_Attr" ])
+            poleVectorBlend = self.poleVectorStretchNodes[TargetJnt]["poleStretchBC"]
+            cmds.disconnectAttr("{}.{}" .format(sourceAttr , destinationAttr))
+            cmds.connectAttr(poleVectorBlend + ".outputR" ,  self.poleVectorStretchNodes[TargetJnt]["MDL"] + ".input1" ,f=1)
+
+
+        
 
 
     def createPoleVector(self , Name , posData , IkHandle  , annotationRoot = None ):
@@ -1077,8 +993,9 @@ class Ikrig:
             raise TypeError("> Invalid <posData> input. Expected a valid list, tuple, or an existing obj ")
             
         if pos:
-            poleLoc = self.CreateOrGet_Loc(pos  , uniqueName )[0]
-            poleLocShape = self.CreateOrGet_Loc(pos  , uniqueName )[-1]
+            preLoc = self.CreateOrGet_Loc(pos  , uniqueName )
+            poleLoc = preLoc[0]
+            poleLocShape = preLoc[-1]
 
             self.poleVectorDic["obj"] = poleLoc
             self.poleVectorDic["shape"] = poleLocShape
@@ -1144,7 +1061,7 @@ class Ikrig:
 
 
                 
-            q
+            
                 
                 
 
@@ -1162,13 +1079,28 @@ a = Ikrig(select)
 a.setIKHandle("Test", a.Jntlist[0] , a.Jntlist[2] , 1)
 a.setScaleDefault()
 a.setAxis("Z")
+pprint.pprint(a.Jntlist)
+
+Pos = a.getPoleVectorPosData(select[0],select[1] ,select[2])
+
+a.createPoleVector("poleVector" , Pos , a.CurrentIK , a.Jntlist[1])
 a.addAttrStretch(a.Jntlist[0] , "Stretch")
-#a.addAttrVolume(a.Jntlist[0] , "Volume")
+a.addAttrVolume(a.Jntlist[0] , "Volume")
+a.addAttrPoleVectorStretch(a.Jntlist[0] , "PoleVectorStretch")
 a.setDistance( a.Jntlist[0] , a.Jntlist[2])
+
 a.createStretchNode("Stretch" , a.Jntlist[:3], a.CurrentDistanceNode)
+a.createVolumeNode("Volume" , a.stretchNodeDic["stretchBC"] ,  "outputR"  )
+a.setDistance(a.Jntlist[0] , a.poleVectorDic["obj"] , [a.Jntlist[0] + "Pole" ,a.poleVectorDic["obj"]+"Pole" , a.poleVectorDic["obj"]+ a.Jntlist[0]])
+PoleStartDT = a.CurrentDistanceNode
+a.setDistance(a.Jntlist[2] , a.poleVectorDic["obj"], [a.Jntlist[2] + "Pole" ,a.poleVectorDic["obj"]+"Pole" , a.poleVectorDic["obj"]+ a.Jntlist[2] ])
+PoleEndDT = a.CurrentDistanceNode
+a.createPoleVectorStretchNode("PoleVector" ,PoleStartDT )
 a.connectStrerchToJoint(a.Jntlist[1])
 a.connectStrerchToJoint(a.Jntlist[2])
-
 a.setSlide(a.Jntlist[1] , a.Jntlist[0]  , "Slide_1")
 a.setSlide(a.Jntlist[2] , a.Jntlist[0]  , "Slide_2")
-#a.setVolume("Volume" , a.Jntlist[:3])
+a.connectVolumeToJoint(a.Jntlist[1])
+
+
+#a.setVolume("Volume" , a.Jntlist[:3]) 
