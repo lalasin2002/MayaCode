@@ -715,8 +715,10 @@ def Create_PointOnSurface_FromMeshEdge(startEdge , endEdge  , Names = ["start_cu
     return returnDic
 
 
-def d_MeshHardEdge_Ctrl(MeshItem , Name , size =1 , Position = False):
+
+def d_MeshHardEdge_Ctrl(MeshItem, Name, size=1, Position=False):
     """
+    (Python 2.7 Compatible)
     주어진 메쉬(MeshItem)의 하드 엣지(Hard Edge)를 감지하여,
     해당 엣지들의 형태를 따라 커브 컨트롤러를 생성합니다.
 
@@ -735,46 +737,63 @@ def d_MeshHardEdge_Ctrl(MeshItem , Name , size =1 , Position = False):
     Returns:
         str: 생성된 컨트롤러(그룹)의 이름.
     """
-    ReturnItem = None
-    
-    if cmds.objectType(MeshItem) == "transform" or cmds.objectType(MeshItem)  == "mesh":
-        cmds.select(MeshItem)
-        cmds.polySelectConstraint( m =3 ,t = 0x8000  ,sm =1)
-        HardEdges = cmds.ls(sl =1,fl =1)
-        
-        Ctrl = cmds.createNode("transform" , n = Name)
-        PosT = [0,0,0]
-        PosR = [0,0,0]
-        if Position:
-            CP = cmds.parentConstraint(MeshItem , Ctrl, mo =0)
-            PosT = cmds.xform(Ctrl , q =1, ws =1 , t =1)
-            PosR = cmds.xform(Ctrl , q =1, ws =1 , ro =1)
-            PosT = [-1 * x for x in PosT]
-            cmds.delete(CP)
-        
-        for i, x in enumerate(HardEdges):
-            cmds.select(x)
-            Crv = cmds.polyToCurve(degree =1, form=2)
-            cmds.xform(Crv , ws =1, t = PosT)
-            cmds.xform(Crv , ws =1, ro = PosR)
-            #cmds.makeIdentity(Crv , a =1,t =1)
-            
-            
-            Shp = cmds.listRelatives(Crv , s =1 )[0]
-            if Position:
-                Cv = cmds.ls(Shp + ".cv[*]" ,fl =1)
-                print (Cv)
-                cmds.select(Cv ,r =1)
-                
-                cmds.move( PosT[0],PosT[1] , PosT[2] , r =1)
-            ReNameShp = cmds.rename(Shp ,"{}{}Shape" .format(Name , i+1))
-            cmds.parent(ReNameShp , Ctrl ,r =1, s=1)
-            cmds.delete( Crv  )
 
-        cmds.scale(size , size , size , Ctrl)
-        cmds.makeIdentity(Ctrl , a =1 , s =1, pn =1)
-        ReturnItem = Ctrl
+    if not cmds.objExists(MeshItem):
+        return None
     
+    shapes = cmds.listRelatives(MeshItem, shapes=True, fullPath=True) or []
+    if not any(cmds.objectType(s) == 'mesh' for s in shapes):
+        return None
+
+    cmds.select(MeshItem)
+    try:
+        cmds.polySelectConstraint(mode=3, type=0x8000, smoothness=1)
+        # selection constraint를 비활성화해야 ls 명령이 제대로 동작합니다.
+        cmds.polySelectConstraint(disable=True)
+        HardEdges = cmds.ls(sl=True, fl=True)
+    finally:
+        cmds.polySelectConstraint(disable=True)
+
+    if not HardEdges:
+        #cmds.warning("하드 엣지를 찾을 수 없습니다.")
+        cmds.select(cl=True)
+        return None
+
+    Ctrl = cmds.createNode("transform", n=Name)
+    mesh_pos = cmds.xform(MeshItem, q=True, ws=True, rp=True)
+    mesh_rot = cmds.xform(MeshItem, q=True, ws=True, ro=True)
+    
+    offset_pos = [-x for x in mesh_pos]
+
+    temp_curves_to_delete = []
+    for i, edge in enumerate(HardEdges):
+        cmds.select(edge)
+        crv_transform = cmds.polyToCurve(degree=1, form=2, ch=False)[0]
+        cmds.xform(crv_transform, ws=True, t=offset_pos, r=True)
+        
+        # 트랜스폼 값을 셰이프에 굽습니다 (Freeze Transformations)
+        cmds.makeIdentity(crv_transform, apply=True, t=1, r=1, s=1, n=0)
+
+        shp = cmds.listRelatives(crv_transform, s=True)[0]
+        renamed_shp = cmds.rename(shp, "{}{}Shape".format(Name, i + 1))
+        cmds.parent(renamed_shp, Ctrl, relative=True, shape=True)
+        
+        temp_curves_to_delete.append(crv_transform)
+        
+    # 임시로 만들었던 커브 트랜스폼들을 한번에 삭제
+    if temp_curves_to_delete:
+        cmds.delete(temp_curves_to_delete)
+
+    # 7. 컨트롤러의 최종 크기 및 위치 설정
+    cmds.scale(size, size, size, Ctrl)
+    cmds.makeIdentity(Ctrl, apply=True, s=1)
+
+    # Position=True 옵션이 켜져 있다면, 완성된 컨트롤러를 원본 메쉬 위치로 이동
+    if Position:
+        cmds.xform(Ctrl, ws=True, t=mesh_pos)
+        cmds.xform(Ctrl, ws=True, ro=mesh_rot)
+
+    cmds.select(Ctrl)
     return Ctrl
 
 

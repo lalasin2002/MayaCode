@@ -1,0 +1,83 @@
+# -*- coding: utf-8 -*-
+import maya.cmds as cmds
+
+
+def set_wireDeformer(Object , Crv , BaseCrv = None  ,DropOff = 10000  , wireName = None):
+    """
+    Maya에서 오브젝트에 Wire Deformer를 설정하고 연결합니다.
+
+    지정된 커브를 사용해 타겟 오브젝트에 Wire Deformer를 생성합니다.
+    BaseCrv를 지정하지 않으면 Crv를 자동으로 복제하여 baseWire로 사용합니다.
+
+    Args:
+        Object (str): 와이어 디포머를 적용할 지오메트리 오브젝트의 이름입니다.
+        Crv (str): 디포머로 사용할 NURBS 커브의 transform 노드 이름입니다.
+        BaseCrv (str, optional): 베이스 와이어로 사용할 커브의 transform 노드 이름입니다. 
+                                 None일 경우, Crv를 자동으로 복제합니다. 기본값은 None입니다.
+        DropOff (float, optional): 와이어 디포머의 `dropoffDistance` 값입니다. 기본값은 10000입니다.
+        wireName (str, optional): 생성될 와이어 디포머 노드의 이름입니다. 기본값은 None입니다.
+
+    Returns:
+        list: [생성된 와이어 노드(str), 사용된 베이스 커브의 transform 노드(str)] 를 반환합니다.
+
+    Raises:
+        TypeError: Object나 Crv가 씬에 존재하지 않을 경우 발생합니다.
+        ValueError: Crv 또는 BaseCrv가 유효한 NURBS 커브가 아닐 경우 발생합니다.
+    """
+
+    def _get_curveShape(Curve):
+        """주어진 커브 transform 노드에서 nurbsCurve shape 노드를 찾아 반환하는 헬퍼 함수"""
+        if not cmds.objExists(Curve):
+            return None
+        if cmds.objectType(Curve) == "nurbsCurve":
+            return Curve
+        Shp =cmds.listRelatives(Curve, s=1, type="nurbsCurve")
+
+        if Shp:
+            return Shp[0]
+
+
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+
+    if not cmds.objExists(Object ):
+        raise TypeError("Invalid input. {} is not exist." .format(Object) )
+    if not cmds.objExists(Crv):
+        raise TypeError("Invalid input. {} is not exist." .format(Crv))
+    if not all(isinstance(x , string_type) for x in [Object , Crv]):
+        raise TypeError("Invalid input. Expected a stringType" )
+    
+    CrvShp = _get_curveShape(Crv)
+    if CrvShp is None:
+        raise ValueError("{} is not a valid curve.".format(Crv))
+
+    BaseCrvShp = None
+    BaseCrv_transform = None
+
+    if not BaseCrv is None and cmds.objExists(BaseCrv):
+        BaseCrv_transform = BaseCrv
+        BaseCrvShp = _get_curveShape(BaseCrv_transform)
+        if BaseCrvShp is None:      
+            raise ValueError("Provided BaseCrv '{}' is not a valid curve." .format(BaseCrv))
+        
+    else:
+        BaseCrv_transform = cmds.duplicate(Crv , n = "{}Base" .format(Crv))[0]
+        BaseCrvShp = _get_curveShape(BaseCrv_transform)
+        cmds.setAttr(BaseCrv_transform+ ".visibility" , 0)
+
+    
+    WireUnpackAttr = {"wc" : 1}
+    if not wireName is None and isinstance(wireName , string_type):
+        WireUnpackAttr["n"] = str(wireName)
+        
+
+    Wire = cmds.wire(Object  ,**WireUnpackAttr )[0]
+    cmds.connectAttr("{}.worldSpace[0]" .format(CrvShp) , "{}.deformedWire[0]".format(Wire) ,f =1)
+    cmds.connectAttr("{}.worldSpace[0]" .format(BaseCrvShp) , "{}.baseWire[0]".format(Wire) ,f =1)
+    cmds.setAttr("{}.dropoffDistance[0]" .format(Wire) ,DropOff )
+    cmds.setAttr("{}.scale[0]" .format(Wire) ,1 )
+
+
+    return [Wire , BaseCrv_transform]
