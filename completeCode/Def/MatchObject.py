@@ -116,31 +116,42 @@ class Match_OrientOnCrv:
         self.UnpackDic.update(kwargs)
 
 
-    def Build(self , Parent = False):
+    def Build(self , ParentBool = False):
         self.UnpackDic["maintainOffset"] = False
 
         OldTarget = None
+        OldGrp = None
+        Grps = []
+        Grp = None
         for i , Target in enumerate(self.Targets):
-
-            if OldTarget:
-                Grp = cmds.createNode("transform" , n = "{}_Grp" .format(Target))
-                cmds.delete(cmds.parentConstraint(Target , Grp , mo =0))
-                cmds.parent(Target , Grp)
-
-                #if i == 0:
-                AimC = cmds.aimConstraint(OldTarget ,  Grp , **self.UnpackDic )
+            Grp = cmds.createNode("transform" , n = "{}_Grp" .format(Target))
+            cmds.delete(cmds.parentConstraint(Target , Grp , mo =0))
+            cmds.parent(Target , Grp)
+            Grps.append(Grp)
+            
+            
+            if OldGrp:
+                AimC = cmds.aimConstraint(Target ,OldGrp ,**self.UnpackDic )
                 cmds.delete(AimC)
-                if i == len(self.Targets):
-                    OldTargetRotate = cmds.xform(OldTarget , q =1 , ro =1 , ws =1)
-                    for  n , ax in enumerate("XYZ"):
-                        cmds.setAttr("{}.rotate{}" .format(Grp , ax) ,OldTargetRotate[n])
-
-                cmds.parent(Target , world=1)
-                cmds.delete(Grp)
-
-
-            if Parent and i >0:
                 
-                cmds.parent(Target , OldTarget)
+            if OldTarget:
+                if i == len(self.Targets)-1:
+                    for  n , ax in enumerate("XYZ"):
+                        Get = cmds.getAttr(OldGrp + ".rotate{}" .format(ax))
+                        cmds.setAttr("{}.rotate{}"  .format(Grp , ax) , Get )
 
+            
+                
+                       
             OldTarget = Target
+            OldGrp = Grp
+        cmds.parent(self.Targets , w =1)
+        cmds.delete(Grps)
+            
+            
+        if ParentBool:
+            Old = None
+            for x in self.Targets:
+                if Old:
+                    cmds.parent(x , Old)
+                Old  = x

@@ -2,7 +2,6 @@
 import maya.cmds as cmds
 
 
-
 def set_wireDeformer(Object , Crv , BaseCrv = None  ,DropOff = 10000  , wireName = None):
     """
     Maya에서 오브젝트에 Wire Deformer를 설정하고 연결합니다.
@@ -69,7 +68,7 @@ def set_wireDeformer(Object , Crv , BaseCrv = None  ,DropOff = 10000  , wireName
         cmds.setAttr(BaseCrv_transform+ ".visibility" , 0)
 
     
-    WireUnpackAttr = {"wc" : 1}
+    WireUnpackAttr = {}
     if not wireName is None and isinstance(wireName , string_type):
         WireUnpackAttr["n"] = str(wireName)
         
